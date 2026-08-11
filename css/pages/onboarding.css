@@ -1,0 +1,8 @@
+/* onboarding.css */
+.onboarding-shell { min-height: 100vh; padding: var(--space-6) var(--space-4); }
+.onboarding-card { max-width: 560px; margin: 0 auto; }
+.onboarding-step-title { margin-bottom: var(--space-1); }
+.onboarding-step-desc { margin-bottom: var(--space-5); }
+.onboarding-nav { display: flex; justify-content: space-between; margin-top: var(--space-6); gap: var(--space-3); }
+.custom-amount-box { margin-top: var(--space-3); }
+.step-counter { text-align: center; font-size: var(--font-size-xs); color: var(--color-text-subtle); margin-bottom: var(--space-2); }

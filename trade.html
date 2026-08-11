@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade — InvestIQ</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/pages/trade.css">
+</head>
+<body>
+<div id="appShell" data-page="trade">
+  <div id="pageContent">
+    <div class="section-header">
+      <div><h2>Trade</h2><p class="text-muted" style="margin:0">Virtual trading only — no real money is ever used.</p></div>
+    </div>
+
+    <div class="trade-layout">
+      <div class="card">
+        <div class="tabs">
+          <button type="button" class="tab-btn active" id="buyTab">Buy</button>
+          <button type="button" class="tab-btn" id="sellTab">Sell</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="stockSelect">Stock</label>
+          <select class="select" id="stockSelect"></select>
+        </div>
+
+        <div id="stockPreview" class="text-muted" style="margin-bottom:var(--space-4)"></div>
+
+        <div class="form-group">
+          <label class="form-label" for="qtyInput">Quantity</label>
+          <input class="input" type="number" id="qtyInput" min="1" step="1" value="1">
+          <div class="form-error" id="qtyError" hidden></div>
+        </div>
+
+        <div class="card" style="background:var(--color-surface-alt);border:none;margin-bottom:var(--space-4)">
+          <div class="trade-summary-row"><span>Current Price</span><span id="summaryPrice">—</span></div>
+          <div class="trade-summary-row"><span>Estimated Value</span><span id="summaryTotal">—</span></div>
+          <div class="trade-summary-row"><span>Available Virtual Cash</span><span id="summaryCash">—</span></div>
+          <div class="trade-summary-row" id="ownedRow" hidden><span>You own</span><span id="summaryOwned">—</span></div>
+        </div>
+
+        <div class="form-error" id="formError" hidden style="margin-bottom:var(--space-3)"></div>
+        <button type="button" class="btn btn-primary btn-block btn-lg" id="submitTradeBtn">Buy</button>
+      </div>
+
+      <div class="card">
+        <h3>Order Rules</h3>
+        <ul class="stack-2" style="list-style:disc;padding-left:1.2em;font-size:var(--font-size-sm);color:var(--color-text-muted)">
+          <li>Orders execute instantly at the current demo market price.</li>
+          <li>You cannot buy more than your available virtual cash allows.</li>
+          <li>You cannot sell more shares than you currently hold.</li>
+          <li>All trades are simulated — no real money or brokerage is involved.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/data/demoStocks.js"></script>
+<script src="js/marketData.js"></script>
+<script src="js/api.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/pages/trade.js"></script>
+</body>
+</html>

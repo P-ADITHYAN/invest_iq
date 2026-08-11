@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign up — InvestIQ</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/pages/auth.css">
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card">
+    <a href="index.html" class="auth-logo"><span class="auth-logo-mark">I</span><span id="brandName">InvestIQ</span></a>
+    <div class="card">
+      <h2>Create your account</h2>
+      <p class="text-muted">Start building your personalized virtual portfolio.</p>
+
+      <form id="signupForm" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="name">Full name</label>
+          <input class="input" type="text" id="name" name="name" autocomplete="name" required>
+          <div class="form-error" id="nameError" hidden></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="input" type="email" id="email" name="email" autocomplete="email" required>
+          <div class="form-error" id="emailError" hidden></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="input-group">
+            <input class="input" type="password" id="password" name="password" autocomplete="new-password" required minlength="6">
+            <button type="button" class="input-group-btn" id="togglePw" aria-label="Show password">👁</button>
+          </div>
+          <div class="form-hint">At least 6 characters.</div>
+          <div class="form-error" id="passwordError" hidden></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="confirmPassword">Confirm password</label>
+          <input class="input" type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+          <div class="form-error" id="confirmError" hidden></div>
+        </div>
+        <div class="form-error" id="formError" hidden style="margin-bottom:var(--space-3)"></div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitBtn">Create account</button>
+      </form>
+    </div>
+    <p class="auth-footer-link">Already have an account? <a href="login.html" style="color:var(--color-text);font-weight:600">Log in</a></p>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/data/demoStocks.js"></script>
+<script src="js/marketData.js"></script>
+<script src="js/api.js"></script>
+<script>
+  document.getElementById("brandName").textContent = CONFIG.APP_NAME;
+  document.title = "Sign up — " + CONFIG.APP_NAME;
+  if (Store.getSession()) window.location.href = "dashboard.html";
+
+  const form = document.getElementById("signupForm");
+  const submitBtn = document.getElementById("submitBtn");
+  document.getElementById("togglePw").addEventListener("click", function () {
+    const pw = document.getElementById("password");
+    pw.type = pw.type === "password" ? "text" : "password";
+    this.textContent = pw.type === "password" ? "👁" : "🙈";
+  });
+
+  function clearErrors() {
+    ["nameError", "emailError", "passwordError", "confirmError", "formError"].forEach(function (id) {
+      const el = document.getElementById(id);
+      el.hidden = true; el.textContent = "";
+    });
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    clearErrors();
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+
+    let hasError = false;
+    if (!name) { UI.qs("#nameError").textContent = "Please enter your name."; UI.qs("#nameError").hidden = false; hasError = true; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { UI.qs("#emailError").textContent = "Enter a valid email address."; UI.qs("#emailError").hidden = false; hasError = true; }
+    if (password.length < 6) { UI.qs("#passwordError").textContent = "Password must be at least 6 characters."; UI.qs("#passwordError").hidden = false; hasError = true; }
+    if (password !== confirmPassword) { UI.qs("#confirmError").textContent = "Passwords do not match."; UI.qs("#confirmError").hidden = false; hasError = true; }
+    if (hasError) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Creating account...";
+    api.signup(name, email, password).then(function () {
+      window.location.href = "onboarding.html";
+    }).catch(function (err) {
+      const el = document.getElementById("formError");
+      el.textContent = err.message;
+      el.hidden = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Create account";
+    });
+  });
+</script>
+</body>
+</html>

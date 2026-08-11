@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account — InvestIQ</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+<div id="appShell" data-page="account">
+  <div id="pageContent">
+    <div class="section-header"><div><h2>Account</h2><p class="text-muted" style="margin:0">Your profile and app information.</p></div></div>
+    <div class="grid grid-2">
+      <div class="card" id="profileCard"></div>
+      <div class="card" id="riskCard"></div>
+    </div>
+
+    <div class="card" style="margin-top:var(--space-5)">
+      <h3>Reset Virtual Account</h3>
+      <p class="text-muted">Clears all virtual holdings, cash, transactions and alerts, and restores your starting balance of <strong id="resetCashAmount"></strong>. Your risk profile is kept.</p>
+      <button type="button" class="btn btn-outline" id="resetBtn">Reset Virtual Portfolio</button>
+    </div>
+
+    <div class="disclaimer-banner" style="margin-top:var(--space-5)">
+      This platform provides educational and algorithmic analysis for informational purposes only. It does not guarantee investment returns and is not a substitute for professional financial advice. All trading is simulated with virtual currency — InvestIQ never places real trades or connects to a real brokerage account.
+    </div>
+
+    <button type="button" class="btn btn-danger" style="margin-top:var(--space-5)" id="logoutBtn">Log out</button>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/api.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/pages/account.js"></script>
+</body>
+</html>

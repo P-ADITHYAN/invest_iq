@@ -1,0 +1,9 @@
+/* stocks.css */
+.filter-bar { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-5); align-items: center; }
+.filter-bar .input, .filter-bar .select { width: auto; min-width: 160px; }
+.filter-bar .input { flex: 1; min-width: 220px; }
+.stock-symbol-cell { display: flex; flex-direction: column; }
+.stock-symbol-cell .company { font-size: var(--font-size-xs); color: var(--color-text-subtle); }
+.risk-pill-Low { color: var(--color-success); }
+.risk-pill-Moderate { color: var(--color-warning); }
+.risk-pill-High { color: var(--color-danger); }

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alerts — InvestIQ</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/pages/alerts.css">
+</head>
+<body>
+<div id="appShell" data-page="alerts">
+  <div id="pageContent">
+    <div class="section-header">
+      <div><h2>Alerts</h2><p class="text-muted" style="margin:0">Automated stop-loss, target and trailing rules — all virtual.</p></div>
+    </div>
+
+    <div class="alerts-layout">
+      <div class="card">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="active">Active</button>
+          <button class="tab-btn" data-tab="triggered">Triggered</button>
+          <button class="tab-btn" data-tab="completed">Completed</button>
+        </div>
+        <div id="alertsList"></div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:var(--space-5)">
+          <h3>Create Rule</h3>
+          <div class="form-group">
+            <label class="form-label" for="ruleStock">Stock (must be held)</label>
+            <select class="select" id="ruleStock"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ruleType">Rule Type</label>
+            <select class="select" id="ruleType">
+              <option value="stop_loss">Stop Loss (sell if price ≤ ₹X)</option>
+              <option value="target">Target (sell if price ≥ ₹X)</option>
+              <option value="pct_stop">Percentage Stop (falls X%)</option>
+              <option value="pct_target">Percentage Target (rises X%)</option>
+              <option value="trailing_stop">Trailing Stop (falls X% from high)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="thresholdLabel" for="thresholdInput">Trigger Price (₹)</label>
+            <input class="input" type="number" id="thresholdInput" min="0" step="0.5">
+          </div>
+          <div class="form-error" id="createError" hidden></div>
+          <button type="button" class="btn btn-primary btn-block" id="createRuleBtn">Create Rule</button>
+        </div>
+
+        <div class="card">
+          <h3>Simulate Price Update</h3>
+          <p class="text-muted" style="font-size:var(--font-size-xs)">Demo-only control — there's no live market feed, so use this to test whether your rules trigger correctly.</p>
+          <div class="form-group">
+            <label class="form-label" for="simStock">Stock</label>
+            <select class="select" id="simStock"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="simPrice">New Price (₹)</label>
+            <input class="input" type="number" id="simPrice" min="0" step="0.5">
+          </div>
+          <button type="button" class="btn btn-outline btn-block" id="simulateBtn">Simulate Price Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/data/demoStocks.js"></script>
+<script src="js/marketData.js"></script>
+<script src="js/ruleEngine.js"></script>
+<script src="js/api.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/pages/alerts.js"></script>
+</body>
+</html>

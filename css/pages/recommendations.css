@@ -1,0 +1,9 @@
+/* recommendations.css */
+.reco-summary-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-4); margin-bottom: var(--space-5); }
+@media (max-width: 900px) { .reco-summary-bar { grid-template-columns: repeat(2, 1fr); } }
+.stock-reco-card { display: flex; flex-direction: column; gap: var(--space-3); }
+.stock-reco-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.mini-score-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.qty-stepper { display: flex; align-items: center; gap: var(--space-2); }
+.qty-stepper button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--color-border-strong); background: var(--color-surface); cursor: pointer; font-weight: 700; }
+.customize-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); gap: var(--space-3); flex-wrap: wrap; }

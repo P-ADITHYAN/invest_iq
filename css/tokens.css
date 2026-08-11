@@ -1,0 +1,99 @@
+/**
+ * tokens.css — Design system variables for InvestIQ.
+ * Rebranding or re-theming the entire app means editing this file only.
+ * Palette inspired by the provided reference (light surface, lime accent).
+ */
+
+:root {
+  /* ---- Core palette ---- */
+  --color-background: #F4F6F1;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F9FAF6;
+  --color-sidebar: #14161A;
+  --color-sidebar-text: #B9BDC4;
+
+  --color-primary: #D7FF3F;
+  --color-primary-strong: #C2E82E;
+  --color-primary-text: #16181C; /* text placed on top of primary */
+
+  --color-secondary: #16181C;
+
+  --color-text: #16181C;
+  --color-text-muted: #6B7178;
+  --color-text-subtle: #9BA0A8;
+
+  --color-success: #1E9E5A;
+  --color-success-bg: #E7F8EE;
+  --color-warning: #B7791F;
+  --color-warning-bg: #FDF3E1;
+  --color-danger: #D64545;
+  --color-danger-bg: #FCEAEA;
+  --color-info: #2B6CB0;
+  --color-info-bg: #E9F1FB;
+
+  --color-border: #E4E7DF;
+  --color-border-strong: #D2D6CC;
+
+  /* ---- Chart colors (deterministic categorical palette) ---- */
+  --chart-1: #D7FF3F;
+  --chart-2: #16181C;
+  --chart-3: #2B6CB0;
+  --chart-4: #B7791F;
+  --chart-5: #D64545;
+  --chart-6: #6B7178;
+  --chart-7: #1E9E5A;
+  --chart-8: #8E5FD9;
+
+  /* ---- Typography ---- */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.125rem;
+  --font-size-lg: 1.375rem;
+  --font-size-xl: 1.75rem;
+  --font-size-2xl: 2.25rem;
+  --font-size-3xl: 3rem;
+
+  /* ---- Spacing scale ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* ---- Radius / shadow ---- */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(20, 22, 26, 0.06);
+  --shadow-md: 0 6px 20px rgba(20, 22, 26, 0.08);
+  --shadow-lg: 0 16px 40px rgba(20, 22, 26, 0.12);
+
+  /* ---- Layout ---- */
+  --sidebar-width: 84px;
+  --topbar-height: 72px;
+  --content-max-width: 1280px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0F1013;
+    --color-surface: #1A1C21;
+    --color-surface-alt: #202329;
+    --color-text: #F2F3F1;
+    --color-text-muted: #A6ABB3;
+    --color-text-subtle: #787E87;
+    --color-border: #2A2D33;
+    --color-border-strong: #383C44;
+    --color-success-bg: #12291D;
+    --color-warning-bg: #2E2410;
+    --color-danger-bg: #2E1717;
+    --color-info-bg: #142334;
+  }
+}

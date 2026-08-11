@@ -1,0 +1,6 @@
+/* portfolio.css */
+.portfolio-top-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); margin-bottom: var(--space-5); }
+@media (max-width: 900px) { .portfolio-top-grid { grid-template-columns: 1fr; } }
+.donut-legend { display: flex; flex-direction: column; gap: 6px; margin-top: var(--space-3); }
+.donut-legend-item { display: flex; justify-content: space-between; font-size: var(--font-size-sm); }
+.donut-wrap { display: flex; gap: var(--space-5); align-items: center; flex-wrap: wrap; }

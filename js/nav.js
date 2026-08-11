@@ -68,7 +68,7 @@
       '<header class="topbar">' +
       '<div class="topbar-search"><span aria-hidden="true">🔍</span><span>Search stocks, e.g. TCS, HDFC Bank</span></div>' +
       '<div class="topbar-user">' +
-      '<span class="demo-flag" title="All data shown is demo data">Demo Mode</span>' +
+      '<span class="demo-flag" id="dataSourceBadge" title="Checking data source...">Checking data...</span>' +
       '<div class="avatar">' + initials + "</div>" +
       "<div><div style=\"font-weight:600;font-size:var(--font-size-sm)\">" + UI.escapeHTML(session ? session.name : "Guest") + "</div></div>" +
       "</div></header>"
@@ -108,6 +108,40 @@
         });
       });
     }
+
+    scheduleDataSourceBadgeUpdate();
+  }
+
+  // MarketDataService.getStatus() only reflects reality after the page's
+  // own data fetch resolves (nav.js mounts before that). Poll briefly so
+  // the badge settles on "Live Data" / "Demo Data" instead of staying on
+  // a placeholder — pages that never fetch stocks (e.g. Learn, Account)
+  // will simply keep the last-known/default label.
+  function scheduleDataSourceBadgeUpdate() {
+    let attempts = 0;
+    const maxAttempts = 6;
+    const timer = setInterval(function () {
+      attempts++;
+      const badge = document.getElementById("dataSourceBadge");
+      if (!badge) { clearInterval(timer); return; }
+
+      if (typeof MarketDataService !== "undefined") {
+        const status = MarketDataService.getStatus();
+        if (status.lastCheckedAt) {
+          badge.textContent = status.live ? "Live Data (Yahoo Finance)" : "Demo Data";
+          badge.title = status.live
+            ? "Prices and charts are live from Yahoo Finance. Fundamentals (P/E, ROE, etc.) are estimated demo figures."
+            : (status.lastError ? "Live data unavailable (" + status.lastError + ") — showing demo data." : "Showing demo/sample data.");
+          badge.classList.toggle("demo-flag-live", !!status.live);
+          clearInterval(timer);
+          return;
+        }
+      }
+      if (attempts >= maxAttempts) {
+        badge.textContent = "Demo Data";
+        clearInterval(timer);
+      }
+    }, 400);
   }
 
   document.addEventListener("DOMContentLoaded", mount);

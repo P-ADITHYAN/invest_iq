@@ -24,8 +24,29 @@
     // API_BASE_URL. No secret keys are ever placed in this file or any
     // other frontend file — a real deployment must proxy provider keys
     // through a server-side API and only ever call API_BASE_URL from here.
-    DEMO_MODE: true,
+    //
+    // Auth, virtual cash, holdings, transactions and alerts ALWAYS stay in
+    // demo/local mode (js/api.js) regardless of this flag — there is no
+    // real backend for those in this project. This flag only controls
+    // where PRICE data comes from (js/marketData.js).
+    DEMO_MODE: false,
     API_BASE_URL: "", // e.g. "https://api.investiq.example.com" in production
+
+    // ---- Live market data (Yahoo Finance, via serverless proxy) ---------
+    // marketData.js calls this same-origin proxy (api/yahoo.js, a Vercel
+    // serverless function) instead of Yahoo directly, since Yahoo's public
+    // chart endpoint doesn't allow direct browser/CORS requests. Only
+    // price, 52-week range, company name and historical charts are live —
+    // fundamentals (P/E, ROE, ROCE, debt/equity, dividend yield, beta) are
+    // NOT available from Yahoo's unauthenticated endpoint and remain
+    // estimated/demo figures from js/data/demoStocks.js, labeled as such.
+    //
+    // If this proxy is unreachable (e.g. running on a plain static host
+    // with no serverless functions, or Yahoo is temporarily down),
+    // marketData.js automatically falls back to full demo data — the app
+    // never breaks, it just silently reverts to demo prices.
+    YAHOO_PROXY_URL: "/api/yahoo",
+    NIFTY50_YAHOO_SYMBOL: "^NSEI",
 
     // ---- Market / currency ------------------------------------------------
     MARKET: "NSE",

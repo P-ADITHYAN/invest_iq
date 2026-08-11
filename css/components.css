@@ -345,6 +345,11 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: var(--font
   background: var(--color-warning-bg);
   padding: 2px 8px;
   border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.demo-flag-live {
+  color: var(--color-success);
+  background: var(--color-success-bg);
 }
 
 .divider { height: 1px; background: var(--color-border); border: none; margin: var(--space-5) 0; }

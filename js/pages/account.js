@@ -15,7 +15,8 @@
     row("Name", session ? session.name : "—") +
     row("Email", session ? session.email : "—") +
     row("Market", CONFIG.MARKET + " (India)") +
-    row("Mode", CONFIG.DEMO_MODE ? "Demo Mode" : "Live") +
+    row("Price Data", CONFIG.DEMO_MODE ? "Demo Data" : "Live (Yahoo Finance, when reachable)") +
+    row("Virtual Account", "Local demo — never real money") +
     "</div>";
 
   api.getRiskProfile().then(function (profile) {

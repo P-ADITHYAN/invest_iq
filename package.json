@@ -1,0 +1,10 @@
+{
+  "name": "investiq",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "InvestIQ — Indian stock portfolio advisor and virtual trading platform. Static HTML/CSS/JS frontend with a single Vercel serverless function (api/yahoo.js) proxying Yahoo Finance for live price data. No build step required.",
+  "scripts": {
+    "dev": "python -m http.server 8080"
+  }
+}

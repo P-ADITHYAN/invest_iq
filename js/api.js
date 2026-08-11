@@ -3,9 +3,15 @@
  *
  * Pages never call `fetch()`, `localStorage`, or the engines directly —
  * they call `api.*`. Every function returns a Promise, even in demo mode,
- * so page code is already shaped correctly for a real backend: swapping
- * CONFIG.DEMO_MODE to false and filling in these function bodies with
- * `fetch(CONFIG.API_BASE_URL + "/...")` calls is the only change required.
+ * so page code is already shaped correctly for a real backend.
+ *
+ * Auth, virtual cash, holdings, transactions and alerts in this file
+ * ALWAYS run in local/demo mode, regardless of CONFIG.DEMO_MODE — there
+ * is no real backend for those in this project (only market data has a
+ * live source, see js/marketData.js). To point auth/trading at a real
+ * backend later, replace these function bodies with
+ * `fetch(CONFIG.API_BASE_URL + "/...")` calls and gate them the same way
+ * marketData.js gates on CONFIG.DEMO_MODE.
  *
  * Demo-mode implementation notes:
  * - Auth is a local, non-cryptographic demo (password is lightly hashed
@@ -81,7 +87,6 @@
   // AUTH
   // =====================================================================
   function signup(name, email, password) {
-    if (!CONFIG.DEMO_MODE) return fail("Live signup API not configured.");
     email = String(email || "").trim().toLowerCase();
     if (!name || !name.trim()) return fail("Please enter your name.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Please enter a valid email address.");
@@ -101,7 +106,6 @@
   }
 
   function login(email, password) {
-    if (!CONFIG.DEMO_MODE) return fail("Live login API not configured.");
     email = String(email || "").trim().toLowerCase();
     const users = Store.getUsers();
     const user = users[email];

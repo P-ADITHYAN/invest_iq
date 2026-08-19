@@ -31,11 +31,15 @@
     return { text: "High", cls: "badge-danger" };
   }
 
-  function fundamentalRow(label, value, tipKey) {
+  // value may legitimately be null (that field wasn't available from the
+  // live provider for this stock) — shown as "N/A" rather than crashing
+  // on a null .toFixed() call or fabricating a number.
+  function fundamentalRow(label, rawValue, formatter, tipKey) {
+    const display = rawValue == null ? "N/A" : formatter(rawValue);
     return (
       '<div class="fundamental-item">' +
       '<div class="label">' + label + (tipKey ? UI.infoTip(AI_TIPS[tipKey] || "") : "") + "</div>" +
-      '<div class="value">' + value + "</div>" +
+      '<div class="value' + (rawValue == null ? " text-subtle" : "") + '">' + display + "</div>" +
       "</div>"
     );
   }
@@ -44,7 +48,6 @@
     pe: "Compares share price with earnings per share. Lower can mean cheaper, but context matters.",
     pb: "Compares share price to book value per share.",
     roe: "Return on Equity — profit generated from shareholder capital.",
-    roce: "Return on Capital Employed — profit generated from all capital used.",
     debtToEquity: "How much debt the company uses relative to equity. Lower is generally safer.",
     dividendYield: "Annual dividend as a percentage of share price.",
     beta: "Sensitivity to overall market movements. 1.0 moves roughly with the market.",
@@ -55,16 +58,16 @@
 
   function load() {
     content.innerHTML = UI.loadingState("Loading stock data...");
-    Promise.all([api.getStock(symbol), api.getHistoricalPrices(symbol), api.getRiskProfile()])
+    Promise.all([api.getStock(symbol), api.getHistoricalPrices(symbol), api.getRiskProfile(), api.getStocks()])
       .then(function (results) {
-        render(results[0], results[1], results[2]);
+        render(results[0], results[1], results[2], results[3]);
       })
       .catch(function () {
         content.innerHTML = UI.errorState("Couldn't load data for " + symbol + ".", null);
       });
   }
 
-  function render(stock, history, riskProfile) {
+  function render(stock, history, riskProfile, liveStocks) {
     document.title = stock.symbol + " — " + CONFIG.APP_NAME;
     const closes = history.map(function (h) { return h.close; });
     const volumes = history.map(function (h) { return h.volume; });
@@ -73,7 +76,10 @@
     const dayChange = UI.deterministicPseudo(symbol + new Date().toDateString(), -3, 3);
     const risk = riskLabel(stock.volatility);
 
-    const scored = ScoringEngine.scoreUniverse(DEMO_STOCKS, riskProfile ? riskProfile.category : "Moderate");
+    // Score against the same live-merged universe the rest of the app
+    // uses (recommendations.js, stocks.js) rather than the raw offline
+    // DEMO_STOCKS list, so this matches live prices/fundamentals too.
+    const scored = ScoringEngine.scoreUniverse(liveStocks, riskProfile ? riskProfile.category : "Moderate");
     const scoredStock = scored.find(function (s) { return s.symbol === symbol; });
 
     content.innerHTML =
@@ -98,24 +104,23 @@
       "</div>" +
 
       '<div class="card" style="margin-bottom:var(--space-5)">' +
-      "<h3>Fundamentals</h3>" +
+      '<div class="row-between"><h3>Fundamentals</h3>' + (stock._fundamentalsLive ? '<span class="badge badge-success">Live</span>' : '<span class="badge badge-neutral">Estimated</span>') + "</div>" +
       '<div class="fundamentals-grid">' +
-      fundamentalRow("P/E", stock.pe.toFixed(1), "pe") +
-      fundamentalRow("P/B", stock.pb.toFixed(1), "pb") +
-      fundamentalRow("EPS", UI.formatINR(stock.eps)) +
-      fundamentalRow("ROE", stock.roe.toFixed(1) + "%", "roe") +
-      fundamentalRow("ROCE", stock.roce.toFixed(1) + "%", "roce") +
-      fundamentalRow("Debt/Equity", stock.debtToEquity.toFixed(2), "debtToEquity") +
-      fundamentalRow("Revenue Growth", UI.formatPercent(stock.revenueGrowth), "revenueGrowth") +
-      fundamentalRow("Profit Growth", UI.formatPercent(stock.profitGrowth), "profitGrowth") +
-      fundamentalRow("Dividend Yield", stock.dividendYield.toFixed(1) + "%", "dividendYield") +
+      fundamentalRow("P/E", stock.pe, function (v) { return v.toFixed(1); }, "pe") +
+      fundamentalRow("P/B", stock.pb, function (v) { return v.toFixed(1); }, "pb") +
+      fundamentalRow("EPS", stock.eps, function (v) { return UI.formatINR(v); }) +
+      fundamentalRow("ROE", stock.roe, function (v) { return v.toFixed(1) + "%"; }, "roe") +
+      fundamentalRow("Debt/Equity", stock.debtToEquity, function (v) { return v.toFixed(2); }, "debtToEquity") +
+      fundamentalRow("Revenue Growth", stock.revenueGrowth, function (v) { return UI.formatPercent(v); }, "revenueGrowth") +
+      fundamentalRow("Profit Growth", stock.profitGrowth, function (v) { return UI.formatPercent(v); }, "profitGrowth") +
+      fundamentalRow("Dividend Yield", stock.dividendYield, function (v) { return v.toFixed(1) + "%"; }, "dividendYield") +
       "</div></div>" +
 
       '<div class="card" style="margin-bottom:var(--space-5)">' +
       "<h3>Risk</h3>" +
       '<div class="fundamentals-grid">' +
-      fundamentalRow("Beta", stock.beta.toFixed(2), "beta") +
-      fundamentalRow("Volatility (Annualized)", stock.volatility.toFixed(1) + "%", "volatility") +
+      fundamentalRow("Beta", stock.beta, function (v) { return v.toFixed(2); }, "beta") +
+      fundamentalRow("Volatility (Annualized)", stock.volatility, function (v) { return v.toFixed(1) + "%"; }, "volatility") +
       "</div></div>" +
 
       (scoredStock ? explainCard(scoredStock) : "") +
@@ -133,7 +138,7 @@
   function explainCard(scoredStock) {
     const rows = Object.keys(scoredStock.labels).map(function (k) {
       const friendly = { financialStrength: "Financial Strength", growth: "Growth", valuation: "Valuation", risk: "Risk", momentum: "Momentum", profitability: "Profitability", dividend: "Dividend" }[k];
-      const badgeClass = { Strong: "badge-success", Good: "badge-info", Fair: "badge-warning", Weak: "badge-danger" }[scoredStock.labels[k]];
+      const badgeClass = { Strong: "badge-success", Good: "badge-info", Fair: "badge-warning", Weak: "badge-danger", "N/A": "badge-neutral" }[scoredStock.labels[k]];
       return '<div class="row-between" style="padding:6px 0;border-bottom:1px solid var(--color-border)"><span>' + friendly + '</span><span class="badge ' + badgeClass + '">' + scoredStock.labels[k] + "</span></div>";
     }).join("");
     return (

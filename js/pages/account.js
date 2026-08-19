@@ -16,6 +16,7 @@
     row("Email", session ? session.email : "—") +
     row("Market", CONFIG.MARKET + " (India)") +
     row("Price Data", CONFIG.DEMO_MODE ? "Demo Data" : "Live (Yahoo Finance, when reachable)") +
+    row("Fundamentals", CONFIG.DEMO_MODE ? "Demo Data" : "Live (RapidAPI, when reachable)") +
     row("Virtual Account", "Local demo — never real money") +
     "</div>";
 

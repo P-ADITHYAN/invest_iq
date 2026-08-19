@@ -1,8 +1,8 @@
 # InvestIQ — Indian Stock Portfolio Advisor & Virtual Trading Platform
 
-A beginner-focused, India-only equity portfolio advisor and virtual (paper) trading web app. Built as a static HTML/CSS/vanilla-JS product-portfolio project — **no React, no frontend framework, no build step** (aside from one small serverless function for live prices — see §8).
+A beginner-focused, India-only equity portfolio advisor and virtual (paper) trading web app. Built as a static HTML/CSS/vanilla-JS product-portfolio project — **no React, no frontend framework, no build step** (aside from two small serverless functions for live data — see §8).
 
-> ⚠️ **Educational prototype.** Trading is always simulated with virtual currency, and nothing here is financial advice. Prices/charts are live from Yahoo Finance when the serverless proxy is reachable, otherwise the app falls back to demo/sample data automatically — fundamentals (P/E, ROE, etc.) are always estimated demo figures. See [Financial Disclaimer](#12-financial-disclaimer) and [§8 Live Market Data](#8-live-market-data-yahoo-finance).
+> ⚠️ **Educational prototype.** Trading is always simulated with virtual currency, and nothing here is financial advice. Price/chart data is live from Yahoo Finance and fundamentals (P/E, ROE, growth, etc.) are live from a RapidAPI Yahoo Finance subscription whenever those proxies are reachable; the app falls back to labeled demo/sample data automatically otherwise. See [Financial Disclaimer](#12-financial-disclaimer) and [§8 Live Market Data](#8-live-market-data-yahoo-finance).
 
 ## 1. Project Overview
 
@@ -33,6 +33,7 @@ The product name "InvestIQ" is a single configurable constant (`CONFIG.APP_NAME`
 - Learning section: 5 categories, each topic with explanation / example / why it matters / common mistake
 - Documented (stub) interfaces for AI explanations, What-If simulation, and backtesting — intentionally left unimplemented per the phased build plan
 - **Live prices from Yahoo Finance** (price, day/52-week range, historical charts) via a small serverless proxy, with automatic fallback to demo data if the proxy or Yahoo is unreachable — see §8
+- **Live fundamentals from a RapidAPI Yahoo Finance subscription** (P/E, P/B, EPS, beta, market cap, dividend yield, plus real-derived ROE / revenue growth / profit growth / debt-to-equity) for a 10-stock universe, with per-field `null` shown honestly as "N/A" rather than fabricated when a provider response is incomplete for a given stock — see §8
 
 ## 3. Architecture
 
@@ -63,8 +64,9 @@ Pages **never** call `fetch()`, `localStorage`, or an engine module directly —
 ├── portfolio.html, trade.html, transactions.html, alerts.html
 ├── learn.html, learn-topic.html, account.html
 ├── api/
-│   └── yahoo.js              (Vercel serverless function — Yahoo Finance CORS proxy, see §8)
-├── package.json                ("type": "module" so api/yahoo.js can use ES module syntax)
+│   ├── yahoo.js                (Vercel serverless function — Yahoo Finance CORS proxy, no key needed, see §8)
+│   └── fundamentals.js          (Vercel serverless function — RapidAPI Yahoo Finance fundamentals, needs RAPIDAPI_KEY, see §8)
+├── package.json                ("type": "module" so the api/ functions can use ES module syntax)
 ├── css/
 │   ├── tokens.css          (design system variables — rebrand here)
 │   ├── base.css            (resets, layout primitives)
@@ -131,23 +133,42 @@ To point **auth and trading** at a real backend (market data already has one, se
 3. Keep the same function signatures — no page code needs to change.
 4. Ensure the backend, not the browser, is authoritative for account balances, holdings, and trade validation.
 
-## 8. Live Market Data (Yahoo Finance)
+## 8. Live Market Data (Yahoo Finance + RapidAPI Fundamentals)
 
-`js/marketData.js` gets **price, day/52-week range, company name, and historical charts** from Yahoo Finance's public chart endpoint (`query1.finance.yahoo.com/v8/finance/chart/<SYMBOL>.NS`), which requires no API key.
+Two separate live-data proxies feed `js/marketData.js`, sourcing different pieces of what the UI shows — nothing numeric is invented by the app itself.
 
-**Why there's a proxy (`api/yahoo.js`):** that endpoint doesn't send an `Access-Control-Allow-Origin` header, so a browser calling it directly gets blocked by CORS. `api/yahoo.js` is a small Vercel serverless function that fetches it server-side (no CORS involved server-to-server) and re-serves the JSON to the frontend with permissive CORS headers. It requires no secrets/environment variables.
+### 8a. Price/chart data — `api/yahoo.js` (no API key needed)
 
-**What's NOT live:** fundamentals — P/E, P/B, EPS, ROE, ROCE, debt-to-equity, revenue/profit growth, dividend yield, beta, volatility. Yahoo's fundamentals endpoint (`quoteSummary`) now requires a session cookie + crumb token to access; this project deliberately does not replicate that handshake, so these fields always come from `js/data/demoStocks.js` and are treated as estimated/demo figures throughout the UI.
+Gets **price, day/52-week range, company name, and historical charts** from Yahoo Finance's public chart endpoint (`query1.finance.yahoo.com/v8/finance/chart/<SYMBOL>.NS`), which requires no authentication. That endpoint doesn't send an `Access-Control-Allow-Origin` header, so a browser calling it directly gets blocked by CORS — `api/yahoo.js` fetches it server-side (no CORS involved server-to-server) and re-serves the JSON with permissive CORS headers.
 
-**Endpoints exposed by `api/yahoo.js`:**
 ```
-GET /api/yahoo?mode=quotes&symbols=TCS.NS,INFY.NS   → lightweight current price + 52-week range per symbol (used by stocks.html, dashboard, etc.)
-GET /api/yahoo?mode=history&symbol=TCS.NS&range=1y&interval=1d → full historical daily series for one symbol (used by stock-detail.html)
+GET /api/yahoo?mode=quotes&symbols=TCS.NS,INFY.NS   → lightweight current price + 52-week range per symbol
+GET /api/yahoo?mode=history&symbol=TCS.NS&range=1y&interval=1d → full historical daily series for one symbol
 ```
 
-**Failure handling:** every call in `js/marketData.js` is wrapped in a `.catch()` that falls back to demo data and logs a `console.warn` — a slow/unreachable proxy, a Yahoo outage, or an unrecognized symbol never breaks the page. Requests time out after 8 seconds.
+### 8b. Fundamentals — `api/fundamentals.js` (needs your own RapidAPI key)
 
-**Deployment implication:** the live-data path only works on hosts that run Node.js serverless functions (Vercel does this natively — see §9). On a purely static host (GitHub Pages, Netlify drag-and-drop, Hostinger shared hosting) `api/yahoo.js` simply won't execute, `fetch()` calls to it will fail, and the app will automatically and permanently run on demo data there — it still works correctly, just without live prices.
+Gets **P/E, P/B, EPS, beta, market cap, dividend yield** directly from a RapidAPI "Yahoo Finance Real Time" subscription (`yahoo-finance-real-time1.p.rapidapi.com`), plus **ROE, revenue growth, profit growth, and debt-to-equity computed from that same provider's real reported figures** (net income, shareholder equity, yearly revenue/earnings, balance-sheet totals) — arithmetic on real numbers, never a placeholder. `roce` is always `null`: this provider doesn't expose the underlying data needed to derive it honestly, so it's never shown as a number.
+
+**Null handling is intentional and important:** if a specific stock's provider response is missing a field (this does happen — some tickers have sparser balance-sheet data than others), `api/fundamentals.js` returns `null` for that field rather than guessing. `js/marketData.js` preserves that `null` as-is — it is never silently backfilled with the offline demo estimate. The UI shows "N/A", and `js/scoringEngine.js` excludes null sub-scores from that stock's score (renormalizing the remaining weights) instead of penalizing or rewarding missing data.
+
+```
+GET /api/fundamentals?symbols=RELIANCE.NS,TCS.NS,...  (max 10, matching the free-tier stock universe)
+```
+
+**Setting up your `RAPIDAPI_KEY`:**
+1. Vercel dashboard → select **this project** (not account settings) → **Settings** tab → **Environment Variables** in the left sidebar
+2. Add Name = `RAPIDAPI_KEY`, Value = your RapidAPI key, applied to Production + Preview + Development → Save
+3. Redeploy for it to take effect on an existing deployment
+4. For local testing with `vercel dev` (see §5), add the same key to a `.env.local` file in the project root — **never commit that file** (it's already covered by a typical `.gitignore`; double-check yours excludes `.env*`)
+
+**Why only 10 stocks:** this runs on a free-tier RapidAPI plan with a limited monthly request quota. `api/fundamentals.js` is deliberately cache-friendly (12h CDN cache, `stale-while-revalidate` for 24h beyond that) so repeat visitors within that window don't cost additional RapidAPI calls — but a full universe refresh still costs 3 provider calls per stock, so the universe (`js/data/demoStocks.js`) is intentionally kept small, with a spread across sectors/risk levels (2 Banking, 2 IT, 2 Automotive, 1 each Energy/FMCG/Healthcare/Telecom) chosen so recommendations still vary meaningfully across risk profiles.
+
+**Volatility** isn't a "fundamental" from either provider — it's computed in `js/marketData.js` from the real historical daily closes (annualized standard deviation of returns), never a fixed number.
+
+**Failure handling:** every call in `js/marketData.js` is wrapped in a `.catch()` that falls back to demo data and logs a `console.warn` — a slow/unreachable proxy, a provider outage, quota exhaustion, or an unrecognized symbol never breaks the page.
+
+**Deployment implication:** both live-data paths only work on hosts that run Node.js serverless functions (Vercel does this natively — see §9). On a purely static host (GitHub Pages, Netlify drag-and-drop, Hostinger shared hosting) neither `api/` function will execute, and the app will automatically and permanently run on demo data there — it still works correctly, just without live prices or fundamentals.
 
 ## 9. Deployment
 
@@ -172,7 +193,7 @@ In every case, `index.html` must be served directly — no server-side rendering
 
 ## 11. Market Data Notes
 
-Prices, day/52-week ranges, and historical charts are live from Yahoo Finance whenever `api/yahoo.js` is reachable (labeled **"Live Data (Yahoo Finance)"** in the top bar) and fall back to deterministic illustrative sample data otherwise (labeled **"Demo Data"**). Fundamentals (P/E, ROE, ROCE, debt-to-equity, growth, dividend yield, beta, volatility) are always estimated demo figures — see §8 for why. None of this should be relied on for real investment decisions.
+Prices, day/52-week ranges, and historical charts are live from Yahoo Finance whenever `api/yahoo.js` is reachable (labeled **"Live Data (Yahoo Finance)"** in the top bar) and fall back to deterministic illustrative sample data otherwise (labeled **"Demo Data"**). Fundamentals (P/E, P/B, EPS, beta, market cap, dividend yield, ROE, revenue/profit growth, debt-to-equity) are live from a RapidAPI Yahoo Finance subscription whenever `api/fundamentals.js` and `RAPIDAPI_KEY` are configured and reachable, falling back to demo figures otherwise — see §8. `roce` is always `null` (never available, never fabricated). Volatility is always computed from real historical price data. None of this should be relied on for real investment decisions.
 
 ## 12. Financial Disclaimer
 
@@ -183,7 +204,9 @@ This platform provides educational and algorithmic analysis for informational pu
 - **AI explanations** — `js/ai.js` already defines the interface (`explainStock`, `explainPortfolio`, `explainMetric`, `summarizePerformance`, `answerLearningQuestion`); demo mode composes text from real computed data. Wiring a live LLM only requires replacing each function body with an API call passing the same structured payload.
 - **What-If Simulator** — recalculates a hypothetical portfolio (different budget/risk/holdings) without touching the real portfolio. Interface documented in `js/ai.js`.
 - **Backtesting** — historical strategy testing against a benchmark. Interface documented in `js/ai.js`.
-- **Live fundamentals** — would require either a paid market-data provider or replicating Yahoo's cookie/crumb auth flow (deliberately not done here); a paid provider is the more robust path and would slot into `api/yahoo.js` (or a new `api/fundamentals.js`) the same way.
+- **A live ROCE figure** — would require balance-sheet + income-statement data this provider doesn't reliably expose; rather than approximate it dishonestly, it stays `null`/"N/A" everywhere.
+- **A larger live stock universe** — currently capped at 10 stocks by the free-tier RapidAPI quota (see §8); upgrading the plan and raising `api/fundamentals.js`'s 10-symbol batch cap, plus expanding `js/data/demoStocks.js`, would scale this up.
+- **Portfolio-level historical performance from real per-holding history** — `js/portfolioAnalytics.js`'s value-series reconstruction (used for the dashboard performance chart, volatility/Sharpe/beta/drawdown) still approximates the *shape* of history using a seeded synthetic walk anchored to the real current price, because the app never recorded actual day-by-day portfolio value. Real per-stock historical closes are now available (§8a) and could replace this with a proper real-history reconstruction as a follow-up.
 - **Portfolio rebalancing suggestions, broker integrations, real-time WebSocket price feeds** — explicitly out of scope for this MVP per the phased build plan.
 
 ## 14. Testing Notes

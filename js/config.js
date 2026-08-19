@@ -48,6 +48,13 @@
     YAHOO_PROXY_URL: "/api/yahoo",
     NIFTY50_YAHOO_SYMBOL: "^NSEI",
 
+    // Real fundamentals (P/E, P/B, EPS, beta, dividend yield, market cap,
+    // and real-derived ROE/growth/debt-equity) via the user's RapidAPI
+    // "Yahoo Finance Real Time" subscription — see api/fundamentals.js.
+    // Free-tier quota, so this is fetched sparingly and cached hard both
+    // at the CDN (in api/fundamentals.js) and in-browser (marketData.js).
+    FUNDAMENTALS_PROXY_URL: "/api/fundamentals",
+
     // ---- Market / currency ------------------------------------------------
     MARKET: "NSE",
     CURRENCY: "INR",

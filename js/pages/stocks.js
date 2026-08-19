@@ -46,10 +46,14 @@
       return true;
     });
 
+    // Sub-scores can be null when a stock's live fundamentals were
+    // incomplete — treat null as "sorts last" rather than corrupting the
+    // comparator with NaN.
+    function orNegInfinity(n) { return n == null ? -Infinity : n; }
     rows.sort(function (a, b) {
       if (sort === "price") return b.price - a.price;
-      if (sort === "growth") return b.subScores.growth - a.subScores.growth;
-      if (sort === "valuation") return b.subScores.valuation - a.subScores.valuation;
+      if (sort === "growth") return orNegInfinity(b.subScores.growth) - orNegInfinity(a.subScores.growth);
+      if (sort === "valuation") return orNegInfinity(b.subScores.valuation) - orNegInfinity(a.subScores.valuation);
       return b.score - a.score;
     });
 
@@ -70,7 +74,7 @@
         '<td><span class="badge badge-neutral">' + s.score + '/100</span></td>' +
         '<td>' + s.sector + "</td>" +
         '<td class="risk-pill-' + rl + '">' + rl + "</td>" +
-        '<td>' + s.pe.toFixed(1) + "</td>" +
+        '<td>' + (s.pe != null ? s.pe.toFixed(1) : '<span class="text-subtle">N/A</span>') + "</td>" +
         "</tr>"
       );
     }).join("");

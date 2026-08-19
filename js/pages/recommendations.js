@@ -79,10 +79,14 @@
 
   function stockCard(p) {
     const friendly = { financialStrength: "Financial Strength", growth: "Growth", valuation: "Valuation", risk: "Risk", momentum: "Momentum", profitability: "Profitability", dividend: "Dividend" };
-    const badgeCls = { Strong: "badge-success", Good: "badge-info", Fair: "badge-warning", Weak: "badge-danger" };
+    const badgeCls = { Strong: "badge-success", Good: "badge-info", Fair: "badge-warning", Weak: "badge-danger", "N/A": "badge-neutral" };
     // Keep the card compact: show only the top 3 sub-scores rather than
     // all 7 (full breakdown is still available on the stock detail page).
-    const topKeys = Object.keys(p.subScores).sort(function (a, b) { return p.subScores[b] - p.subScores[a]; }).slice(0, 3);
+    // Null sub-scores (data unavailable from the provider for this stock)
+    // sort last rather than corrupting the comparator with NaN.
+    const topKeys = Object.keys(p.subScores)
+      .sort(function (a, b) { return (p.subScores[b] == null ? -1 : p.subScores[b]) - (p.subScores[a] == null ? -1 : p.subScores[a]); })
+      .slice(0, 3);
     const subBadges = topKeys.map(function (k) {
       return '<span class="badge badge-compact ' + badgeCls[p.labels[k]] + '">' + friendly[k] + "</span>";
     }).join("");

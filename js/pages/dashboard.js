@@ -17,13 +17,19 @@
 
   Promise.all([api.getPortfolio(), api.getTransactions(), api.getAlerts(), api.getRiskProfile()])
     .then(function (results) {
-      render(results[0], results[1], results[2], results[3]);
+      const topHoldings = results[0].holdings.slice(0, 6);
+      // Real historical closes per holding (live Yahoo data, with the
+      // usual automatic demo fallback inside api.getHistoricalPrices)
+      // for the holdings-table trend sparklines — fetched once up front
+      // rather than faked with a synthetic series.
+      return Promise.all(topHoldings.map(function (h) { return api.getHistoricalPrices(h.symbol).catch(function () { return []; }); }))
+        .then(function (histories) { render(results[0], results[1], results[2], results[3], histories); });
     })
     .catch(function (err) {
       root.innerHTML = UI.errorState(err.message);
     });
 
-  function render(portfolio, transactions, alerts, riskProfile) {
+  function render(portfolio, transactions, alerts, riskProfile, topHoldingsHistory) {
     const holdings = portfolio.holdings;
     const investedTotal = holdings.reduce(function (s, h) { return s + h.investedValue; }, 0);
     const currentHoldingsValue = holdings.reduce(function (s, h) { return s + h.currentValue; }, 0);
@@ -71,8 +77,9 @@
           '<div class="card card-hover" style="margin-bottom:var(--space-5)">' +
           '<div class="row-between"><h3>Holdings</h3><a href="portfolio.html" class="text-muted" style="font-size:var(--font-size-sm)">View all &rarr;</a></div>' +
           '<div class="table-wrap"><table class="data-table"><thead><tr><th>Stock</th><th>Qty</th><th>Trend</th><th>Current Value</th><th>P&L</th></tr></thead><tbody>' +
-          holdings.slice(0, 6).map(function (h) {
-            const spark = DemoHistorical.getSeriesFor(h.symbol, h.currentPrice).slice(-30).map(function (p) { return p.close; });
+          holdings.slice(0, 6).map(function (h, i) {
+            const series = (topHoldingsHistory[i] || []).slice(-30).map(function (p) { return p.close; });
+            const spark = series.length > 1 ? series : [h.currentPrice, h.currentPrice];
             return "<tr class=\"clickable\" onclick=\"window.location.href='stock-detail.html?symbol=" + h.symbol + "'\"><td><strong>" + h.symbol + "</strong></td><td>" + h.quantity + "</td>" +
               '<td><span class="sparkline-container">' + SvgCharts.renderSparkline(spark, { color: h.pnl >= 0 ? "var(--color-success)" : "var(--color-danger)" }) + "</span></td>" +
               "<td>" + UI.formatINR(h.currentValue, { decimals: 0 }) + '</td><td class="' + (h.pnl >= 0 ? "text-success" : "text-danger") + '">' + UI.formatINR(h.pnl, { decimals: 0 }) + "</td></tr>";

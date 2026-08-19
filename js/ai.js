@@ -58,7 +58,6 @@
     pb: "Compares share price to the company's book (net asset) value per share.",
     eps: "Earnings Per Share — how much profit the company makes for each outstanding share.",
     roe: "Return on Equity — how efficiently a company generates profit from shareholders' capital.",
-    roce: "Return on Capital Employed — how efficiently a company generates profit from all the capital it uses, including debt.",
     debtToEquity: "How much debt a company uses relative to shareholder equity. Lower generally means less financial risk.",
     revenueGrowth: "Year-over-year growth in the company's total sales.",
     profitGrowth: "Year-over-year growth in the company's net profit.",

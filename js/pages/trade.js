@@ -15,6 +15,7 @@
   let holdings = {};
   let cash = 0;
   let selectedSymbol = params.get("symbol") || null;
+  const historyCache = {}; // symbol -> real historical closes, fetched once per symbol
 
   const searchInput = document.getElementById("stockSearchInput");
   const comboList = document.getElementById("stockComboboxList");
@@ -150,10 +151,32 @@
     } else {
       ownedRow.hidden = true;
     }
-    document.getElementById("stockPreview").textContent = stock.sector + " · P/E " + stock.pe.toFixed(1) + " · 52W " + UI.formatINR(stock.low52, { decimals: 0 }) + "-" + UI.formatINR(stock.high52, { decimals: 0 });
+    const peText = stock.pe != null ? stock.pe.toFixed(1) : "N/A";
+    document.getElementById("stockPreview").textContent = stock.sector + " · P/E " + peText + " · 52W " + UI.formatINR(stock.low52, { decimals: 0 }) + "-" + UI.formatINR(stock.high52, { decimals: 0 });
 
-    const spark = DemoHistorical.getSeriesFor(stock.symbol, stock.price).slice(-30).map(function (p) { return p.close; });
-    document.getElementById("tradePreviewSpark").innerHTML = SvgCharts.renderSparkline(spark, { color: spark[spark.length - 1] >= spark[0] ? "var(--color-success)" : "var(--color-danger)" });
+    renderPreviewSpark(stock.symbol);
+  }
+
+  // Real historical closes (via api.getHistoricalPrices, which is live
+  // Yahoo data with an automatic demo fallback — see marketData.js),
+  // fetched once per symbol and cached for the rest of this page's life.
+  function renderPreviewSpark(symbol) {
+    const sparkEl = document.getElementById("tradePreviewSpark");
+    if (historyCache[symbol]) {
+      paintSpark(sparkEl, historyCache[symbol]);
+      return;
+    }
+    sparkEl.innerHTML = "";
+    api.getHistoricalPrices(symbol).then(function (series) {
+      const closes = series.slice(-30).map(function (p) { return p.close; });
+      historyCache[symbol] = closes;
+      // Only paint if the user hasn't since switched to a different stock.
+      if (currentStock() && currentStock().symbol === symbol) paintSpark(sparkEl, closes);
+    }).catch(function () { /* leave blank — not critical to the trade flow */ });
+  }
+
+  function paintSpark(el, closes) {
+    el.innerHTML = SvgCharts.renderSparkline(closes, { color: closes[closes.length - 1] >= closes[0] ? "var(--color-success)" : "var(--color-danger)" });
   }
 
   qtyInput.addEventListener("input", updateSummary);

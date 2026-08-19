@@ -1,0 +1,14 @@
+# Environment variables — never commit real secrets (RAPIDAPI_KEY, etc.)
+.env
+.env.local
+.env.*.local
+
+# Vercel CLI local state
+.vercel
+
+# Dependencies (only present if `vercel dev` or similar installs any)
+node_modules/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db

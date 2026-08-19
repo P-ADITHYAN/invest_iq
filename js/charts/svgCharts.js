@@ -149,10 +149,42 @@
     return '<svg viewBox="0 0 ' + width + " " + height + '" preserveAspectRatio="none" role="img" aria-label="Volume chart">' + bars + "</svg>";
   }
 
+  /**
+   * renderScoreRing(score, opts) — a circular 0-100 progress ring.
+   * Returns raw SVG only; wrap it in `.score-ring` with a `.score-ring-value`
+   * / `.score-ring-label` overlay (see css/components.css) for the full
+   * component, e.g.:
+   *   '<span class="score-ring">' + SvgCharts.renderScoreRing(82) +
+   *   '<span class="score-ring-value">82</span></span>'
+   */
+  function renderScoreRing(score, opts) {
+    opts = opts || {};
+    const size = opts.size || 72;
+    const thickness = opts.thickness || 7;
+    const r = (size - thickness) / 2;
+    const cx = size / 2, cy = size / 2;
+    const circumference = 2 * Math.PI * r;
+    const pct = Math.max(0, Math.min(100, score)) / 100;
+    const dash = pct * circumference;
+
+    let color = opts.color;
+    if (!color) {
+      color = score >= 70 ? "var(--color-success)" : score >= 45 ? "var(--color-warning)" : "var(--color-danger)";
+    }
+
+    return (
+      '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + " " + size + '" role="img" aria-label="Score ' + Math.round(score) + ' out of 100">' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--color-border)" stroke-width="' + thickness + '" />' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + thickness +
+      '" stroke-linecap="round" stroke-dasharray="' + dash.toFixed(2) + " " + circumference.toFixed(2) + '" />' +
+      "</svg>"
+    );
+  }
+
   function renderSparkline(values, opts) {
     opts = opts || {};
     return renderLineChart(values, Object.assign({ width: opts.width || 100, height: opts.height || 32, showArea: false }, opts));
   }
 
-  global.SvgCharts = { renderLineChart, renderDonutChart, renderBarRows, renderSparkline, renderVolumeChart, colorFor };
+  global.SvgCharts = { renderLineChart, renderDonutChart, renderBarRows, renderSparkline, renderVolumeChart, renderScoreRing, colorFor };
 })(window);

@@ -3,3 +3,61 @@
 @media (max-width: 900px) { .trade-layout { grid-template-columns: 1fr; } }
 .trade-summary-row { display: flex; justify-content: space-between; padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); }
 .trade-summary-row:last-child { border-bottom: none; }
+
+/* ---- Searchable stock combobox ---- */
+.combobox { position: relative; }
+.combobox-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-height: 240px; overflow-y: auto;
+  z-index: 20;
+}
+.combobox-item {
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast);
+}
+.combobox-item:hover, .combobox-item.active { background: var(--color-surface-alt); }
+.combobox-item .company { color: var(--color-text-subtle); font-size: var(--font-size-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combobox-empty { padding: var(--space-3); font-size: var(--font-size-sm); color: var(--color-text-subtle); text-align: center; }
+
+/* ---- Quick allocation buttons ---- */
+.quick-alloc-row { display: flex; gap: var(--space-2); margin: var(--space-2) 0 var(--space-4); }
+.quick-alloc-btn {
+  flex: 1; padding: 6px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+.quick-alloc-btn:hover { background: var(--color-surface-alt); border-color: var(--color-text); }
+.quick-alloc-btn:active { transform: scale(0.96); }
+
+/* ---- Sparkline preview ---- */
+.trade-preview-spark { margin-top: var(--space-2); }
+.trade-preview-spark svg { width: 100%; height: 36px; display: block; }
+
+/* ---- Success confirmation card ---- */
+.trade-success-card { text-align: center; padding: var(--space-7) var(--space-4); animation: fadeInUp var(--transition-slow) both; }
+.trade-success-icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--color-success-bg); color: var(--color-success);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto var(--space-4);
+}
+.trade-success-icon svg { width: 28px; height: 28px; }
+.trade-success-details {
+  display: inline-block; text-align: left;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin: var(--space-4) 0;
+}
+.trade-success-details .trade-summary-row { border-bottom-color: var(--color-border); min-width: 260px; }

@@ -4,6 +4,9 @@
  * Palette inspired by the provided reference (light surface, lime accent).
  */
 
+/* ---- Google Font: Inter ---- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 :root {
   /* ---- Core palette ---- */
   --color-background: #F4F6F1;
@@ -45,7 +48,8 @@
   --chart-8: #8E5FD9;
 
   /* ---- Typography ---- */
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family-display: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -54,6 +58,24 @@
   --font-size-xl: 1.75rem;
   --font-size-2xl: 2.25rem;
   --font-size-3xl: 3rem;
+
+  /* Font weights — named tokens instead of hardcoded numbers */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
+
+  /* Letter-spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+
+  /* Line-height */
+  --leading-tight: 1.15;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
 
   /* ---- Spacing scale ---- */
   --space-1: 4px;
@@ -71,9 +93,22 @@
   --radius-lg: 20px;
   --radius-pill: 999px;
 
+  --shadow-xs: 0 1px 1px rgba(20, 22, 26, 0.04);
   --shadow-sm: 0 1px 2px rgba(20, 22, 26, 0.06);
   --shadow-md: 0 6px 20px rgba(20, 22, 26, 0.08);
   --shadow-lg: 0 16px 40px rgba(20, 22, 26, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(215, 255, 63, 0.35);
+  --shadow-primary-glow: 0 2px 12px rgba(215, 255, 63, 0.3);
+
+  /* ---- Transitions ---- */
+  --transition-fast: 0.12s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  /* ---- Glass effect (topbar, cards) ---- */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-blur: blur(16px);
+  --glass-border: rgba(255, 255, 255, 0.3);
 
   /* ---- Layout ---- */
   --sidebar-width: 84px;
@@ -95,5 +130,8 @@
     --color-warning-bg: #2E2410;
     --color-danger-bg: #2E1717;
     --color-info-bg: #142334;
+
+    --glass-bg: rgba(26, 28, 33, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.06);
   }
 }

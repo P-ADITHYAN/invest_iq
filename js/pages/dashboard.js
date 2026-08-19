@@ -54,41 +54,48 @@
     const cashSeries = valueSeries.map(function (v) { return v + portfolio.cash; });
 
     root.innerHTML =
-      '<div class="stat-grid" style="margin-bottom:var(--space-5)">' +
-      statCard("Portfolio Value", UI.formatINR(portfolioValue, { decimals: 0 })) +
+      '<div class="stat-grid stagger" style="margin-bottom:var(--space-5)">' +
+      statCard("Portfolio Value", UI.formatINR(portfolioValue, { decimals: 0 }), "", true) +
       statCard("Today's P&L", (todaysPnl >= 0 ? "+" : "") + UI.formatINR(todaysPnl, { decimals: 0 }), todaysPnl >= 0 ? "text-success" : "text-danger") +
       statCard("Total Return", UI.formatPercent(totalReturnPct), totalReturnPct >= 0 ? "text-success" : "text-danger") +
       statCard("Available Cash", UI.formatINR(portfolio.cash, { decimals: 0 })) +
       "</div>" +
 
-      '<div class="card" style="margin-bottom:var(--space-5)">' +
+      '<div class="card anim-fade-in-up" style="margin-bottom:var(--space-5)">' +
       "<h3>Performance</h3>" +
       (cashSeries.length > 1 ? SvgCharts.renderLineChart(cashSeries, { showArea: true }) : '<p class="text-muted">Not enough history yet.</p>') +
       "</div>" +
 
       '<div class="dashboard-grid">' +
         '<div>' +
-          '<div class="card" style="margin-bottom:var(--space-5)">' +
+          '<div class="card card-hover" style="margin-bottom:var(--space-5)">' +
           '<div class="row-between"><h3>Holdings</h3><a href="portfolio.html" class="text-muted" style="font-size:var(--font-size-sm)">View all &rarr;</a></div>' +
-          '<div class="table-wrap"><table class="data-table"><thead><tr><th>Stock</th><th>Qty</th><th>Current Value</th><th>P&L</th></tr></thead><tbody>' +
+          '<div class="table-wrap"><table class="data-table"><thead><tr><th>Stock</th><th>Qty</th><th>Trend</th><th>Current Value</th><th>P&L</th></tr></thead><tbody>' +
           holdings.slice(0, 6).map(function (h) {
-            return "<tr class=\"clickable\" onclick=\"window.location.href='stock-detail.html?symbol=" + h.symbol + "'\"><td><strong>" + h.symbol + "</strong></td><td>" + h.quantity + "</td><td>" + UI.formatINR(h.currentValue, { decimals: 0 }) + '</td><td class="' + (h.pnl >= 0 ? "text-success" : "text-danger") + '">' + UI.formatINR(h.pnl, { decimals: 0 }) + "</td></tr>";
+            const spark = DemoHistorical.getSeriesFor(h.symbol, h.currentPrice).slice(-30).map(function (p) { return p.close; });
+            return "<tr class=\"clickable\" onclick=\"window.location.href='stock-detail.html?symbol=" + h.symbol + "'\"><td><strong>" + h.symbol + "</strong></td><td>" + h.quantity + "</td>" +
+              '<td><span class="sparkline-container">' + SvgCharts.renderSparkline(spark, { color: h.pnl >= 0 ? "var(--color-success)" : "var(--color-danger)" }) + "</span></td>" +
+              "<td>" + UI.formatINR(h.currentValue, { decimals: 0 }) + '</td><td class="' + (h.pnl >= 0 ? "text-success" : "text-danger") + '">' + UI.formatINR(h.pnl, { decimals: 0 }) + "</td></tr>";
           }).join("") +
           "</tbody></table></div>" +
           (holdings.length ? "" : '<p class="text-muted">No holdings yet.</p>') +
           "</div>" +
 
-          '<div class="card">' +
+          '<div class="card card-hover">' +
           '<div class="row-between"><h3>Recent Transactions</h3><a href="transactions.html" class="text-muted" style="font-size:var(--font-size-sm)">View all &rarr;</a></div>' +
           (transactions.length ? transactions.slice(0, 5).map(function (t) {
-            return '<div class="notif-item"><span>' + t.type + " " + t.qty + " " + t.symbol + '</span><span class="text-muted">' + UI.formatDate(t.date) + "</span></div>";
+            const badgeCls = t.type === "BUY" ? "badge-success" : "badge-danger";
+            return '<div class="notif-item"><span><span class="badge ' + badgeCls + '">' + t.type + '</span> ' + t.qty + " " + t.symbol + '</span><span class="text-muted">' + UI.formatDate(t.date) + "</span></div>";
           }).join("") : '<p class="text-muted">No transactions yet.</p>') +
           "</div>" +
         "</div>" +
 
         '<div>' +
-          '<div class="card" style="margin-bottom:var(--space-5)">' +
-          '<div class="row-between"><h3>Portfolio Health</h3><span class="badge badge-neutral">' + analytics.overall + "/100</span></div>" +
+          '<div class="card card-hover" style="margin-bottom:var(--space-5);text-align:center">' +
+          '<div class="row-between" style="text-align:left"><h3>Portfolio Health</h3></div>' +
+          '<span class="score-ring">' + SvgCharts.renderScoreRing(analytics.overall) + '<span class="score-ring-value">' + analytics.overall + "</span></span>" +
+          '<div class="score-ring-label">out of 100</div>' +
+          '<div style="text-align:left;margin-top:var(--space-4)">' +
           SvgCharts.renderBarRows([
             { label: "Diversification", pct: analytics.breakdown.diversification },
             { label: "Risk", pct: analytics.breakdown.risk },
@@ -96,18 +103,18 @@
             { label: "Financial Quality", pct: analytics.breakdown.financialQuality },
             { label: "Volatility", pct: analytics.breakdown.volatility }
           ]) +
-          "</div>" +
+          "</div></div>" +
 
-          '<div class="card" style="margin-bottom:var(--space-5)">' +
+          '<div class="card card-hover" style="margin-bottom:var(--space-5)">' +
           "<h3>Sector Allocation</h3>" +
           SvgCharts.renderBarRows(analytics.sectorExposure.map(function (r, i) { return { label: r.sector, pct: r.pct, colorIndex: i, warn: r.sector !== "Cash" && r.pct > CONFIG.SECTOR_WARNING_THRESHOLD * 100 }; })) +
           "</div>" +
 
-          '<div class="card">' +
+          '<div class="card card-hover">' +
           '<div class="row-between"><h3>Active Alerts</h3><a href="alerts.html" class="text-muted" style="font-size:var(--font-size-sm)">Manage &rarr;</a></div>' +
           (alerts.filter(function (a) { return a.status === "active"; }).length
             ? alerts.filter(function (a) { return a.status === "active"; }).slice(0, 4).map(function (a) {
-              return '<div class="notif-item"><span>' + a.symbol + " · " + RuleEngineLabel(a) + '</span><span class="badge badge-info">Active</span></div>';
+              return '<div class="notif-item"><span><span class="badge-dot warning" style="margin-right:6px"></span>' + a.symbol + " · " + RuleEngineLabel(a) + '</span><span class="badge badge-info">Active</span></div>';
             }).join("")
             : '<p class="text-muted">No active alerts. Set stop-loss or target rules from a holding.</p>') +
           "</div>" +
@@ -115,8 +122,8 @@
       "</div>";
   }
 
-  function statCard(label, value, cls) {
-    return '<div class="card"><div class="card-title">' + label + '</div><div class="card-value ' + (cls || "") + '">' + value + "</div></div>";
+  function statCard(label, value, cls, accent) {
+    return '<div class="card anim-fade-in-up' + (accent ? " card-accent" : " card-hover") + '"><div class="card-title">' + label + '</div><div class="card-value ' + (cls || "") + '">' + value + "</div></div>";
   }
 
   // Lightweight local label helper (mirrors RuleEngine.ruleLabel, kept

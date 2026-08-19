@@ -110,6 +110,21 @@
     }
 
     scheduleDataSourceBadgeUpdate();
+    watchTopbarScroll();
+  }
+
+  // Toggles the glass/blur look on the sticky topbar once the page has
+  // scrolled past a small threshold, so it reads as flat/opaque at the
+  // very top (matching card backgrounds) and "lifts" once content is
+  // moving underneath it.
+  function watchTopbarScroll() {
+    const topbar = document.querySelector(".topbar");
+    if (!topbar) return;
+    function update() {
+      topbar.classList.toggle("topbar-scrolled", window.scrollY > 8);
+    }
+    update();
+    window.addEventListener("scroll", update, { passive: true });
   }
 
   // MarketDataService.getStatus() only reflects reality after the page's

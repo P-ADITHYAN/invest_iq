@@ -58,7 +58,7 @@
       '<div class="grid grid-2" id="stockCardsGrid" style="margin-bottom:var(--space-6)">' +
       draft.positions.map(stockCard).join("") +
       "</div>" +
-      (draft.positions.length ? '<div class="card row-between" style="position:sticky;bottom:var(--space-4)"><div><strong>' + draft.positions.length + ' stocks selected</strong><p class="text-muted" style="margin:0">' + UI.formatPercent(draft.cashPct * 100, 0).replace("+", "") + ' cash reserve</p></div><button class="btn btn-primary btn-lg" id="buildBtn">Build This Portfolio</button></div>' : "");
+      (draft.positions.length ? '<div class="card reco-sticky-bar row-between"><div><strong>' + draft.positions.length + ' stocks selected</strong><p class="text-muted" style="margin:0">' + UI.formatPercent(draft.cashPct * 100, 0).replace("+", "") + ' cash reserve</p></div><button class="btn btn-primary btn-lg" id="buildBtn">Build This Portfolio</button></div>' : "");
 
     const buildBtn = document.getElementById("buildBtn");
     if (buildBtn) buildBtn.addEventListener("click", function () { view = "build"; render(); });
@@ -68,24 +68,37 @@
     return '<div class="card"><div class="card-title">' + label + '</div><div style="font-weight:700">' + value + "</div></div>";
   }
 
+  // Consistent color per sector across cards, memoized as sectors are
+  // first encountered (same palette used by the sector-exposure charts).
+  const sectorColorMap = {};
+  let sectorColorCount = 0;
+  function sectorColor(sector) {
+    if (sectorColorMap[sector] == null) sectorColorMap[sector] = sectorColorCount++;
+    return SvgCharts.colorFor(sectorColorMap[sector]);
+  }
+
   function stockCard(p) {
-    const subBadges = Object.keys(p.labels).map(function (k) {
-      const friendly = { financialStrength: "Financial Strength", growth: "Growth", valuation: "Valuation", risk: "Risk", momentum: "Momentum", profitability: "Profitability", dividend: "Dividend" }[k];
-      const cls = { Strong: "badge-success", Good: "badge-info", Fair: "badge-warning", Weak: "badge-danger" }[p.labels[k]];
-      return '<span class="badge ' + cls + '">' + friendly + ": " + p.labels[k] + "</span>";
+    const friendly = { financialStrength: "Financial Strength", growth: "Growth", valuation: "Valuation", risk: "Risk", momentum: "Momentum", profitability: "Profitability", dividend: "Dividend" };
+    const badgeCls = { Strong: "badge-success", Good: "badge-info", Fair: "badge-warning", Weak: "badge-danger" };
+    // Keep the card compact: show only the top 3 sub-scores rather than
+    // all 7 (full breakdown is still available on the stock detail page).
+    const topKeys = Object.keys(p.subScores).sort(function (a, b) { return p.subScores[b] - p.subScores[a]; }).slice(0, 3);
+    const subBadges = topKeys.map(function (k) {
+      return '<span class="badge badge-compact ' + badgeCls[p.labels[k]] + '">' + friendly[k] + "</span>";
     }).join("");
 
     return (
-      '<div class="card stock-reco-card">' +
+      '<div class="card card-hover stock-reco-card" style="--sector-color:' + sectorColor(p.sector) + '">' +
       '<div class="stock-reco-head"><div><h4 style="margin-bottom:2px">' + p.companyName + '</h4><span class="text-muted">' + p.symbol + " · " + p.sector + "</span></div>" +
-      '<span class="badge badge-neutral">Score ' + p.score + "/100</span></div>" +
+      '<span class="score-ring stock-reco-score">' + SvgCharts.renderScoreRing(p.score, { size: 44, thickness: 4 }) + '<span class="score-ring-value">' + p.score + "</span></span>" +
+      "</div>" +
       '<div class="grid grid-3">' +
       miniStat("Allocation", UI.formatPercent(p.allocationPct * 100, 1).replace("+", "")) +
       miniStat("Investment", UI.formatINR(p.amount, { decimals: 0 })) +
       miniStat("Shares", p.shares) +
       "</div>" +
       '<div><strong>Why this stock?</strong><div class="mini-score-row" style="margin-top:6px">' + subBadges + "</div></div>" +
-      '<p class="text-muted" style="margin:0">' + p.whyThisStock + " Portfolio fit: <strong>" + p.portfolioFit + "</strong></p>" +
+      '<blockquote class="reco-rationale">' + p.whyThisStock + " Portfolio fit: <strong>" + p.portfolioFit + "</strong></blockquote>" +
       "</div>"
     );
   }

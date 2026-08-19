@@ -12,7 +12,7 @@
 </head>
 <body>
 
-<nav class="landing-nav">
+<nav class="landing-nav" id="landingNav">
   <a href="index.html" class="landing-logo"><span class="landing-logo-mark" id="brandMark">I</span><span id="brandName">InvestIQ</span></a>
   <div class="row gap-3">
     <a href="login.html" class="btn btn-ghost">Log in</a>
@@ -21,6 +21,7 @@
 </nav>
 
 <header class="hero">
+  <div class="hero-mesh" aria-hidden="true"></div>
   <span class="badge badge-info" style="margin-bottom:var(--space-4)">🇮🇳 Built for Indian equity markets — NSE</span>
   <h1>Invest Smarter. Learn While You Invest.</h1>
   <p class="subtitle">Build a portfolio based on your budget, risk profile and investment horizon — then practice managing it with virtual money.</p>
@@ -28,14 +29,58 @@
     <a href="signup.html" class="btn btn-primary btn-lg">Build My Portfolio</a>
     <a href="stocks.html" class="btn btn-outline btn-lg" id="exploreStocksLink">Explore Indian Stocks</a>
   </div>
+
+  <div class="hero-mock-wrap">
+    <div class="hero-float-badge risk-badge" aria-hidden="true">
+      <span class="float-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg></span>
+      <span><span class="float-label">Risk Profile</span><br><span class="float-value">Moderate Growth</span></span>
+    </div>
+    <div class="hero-float-badge health-badge" aria-hidden="true">
+      <span class="float-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg></span>
+      <span><span class="float-label">Portfolio Health</span><br><span class="float-value">82 / 100</span></span>
+    </div>
+
+    <div class="hero-mock" aria-hidden="true">
+      <div class="hero-mock-topbar">
+        <div class="hero-mock-dots"><span></span><span></span><span></span></div>
+        <span class="demo-flag">Illustrative preview</span>
+      </div>
+      <div class="hero-mock-grid">
+        <div>
+          <div class="card-title">Portfolio Value</div>
+          <div class="hero-mock-value">₹1,07,540</div>
+          <span class="badge badge-success">+7.54% total return</span>
+          <div class="hero-mock-chart">
+            <svg viewBox="0 0 400 96" preserveAspectRatio="none">
+              <polygon points="0,96 0,70 30,74 60,58 90,64 120,48 150,52 180,36 210,42 240,30 270,34 300,20 330,26 360,14 400,18 400,96" fill="var(--chart-1)" fill-opacity="0.16"/>
+              <polyline points="0,70 30,74 60,58 90,64 120,48 150,52 180,36 210,42 240,30 270,34 300,20 330,26 360,14 400,18" fill="none" stroke="var(--color-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="hero-mock-watchlist">
+          <div class="hero-mock-row"><span>TCS</span><strong class="text-success">+1.8%</strong></div>
+          <div class="hero-mock-row"><span>HDFC Bank</span><strong class="text-success">+0.6%</strong></div>
+          <div class="hero-mock-row"><span>Infosys</span><strong class="text-danger">-0.3%</strong></div>
+          <div class="hero-mock-row"><span>ITC</span><strong class="text-success">+1.1%</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </header>
 
+<section class="stats-strip reveal" aria-label="Platform overview">
+  <div class="stat-strip-item"><div class="stat-strip-value">24</div><div class="stat-strip-label">NSE stocks tracked</div></div>
+  <div class="stat-strip-item"><div class="stat-strip-value">8</div><div class="stat-strip-label">Sectors covered</div></div>
+  <div class="stat-strip-item"><div class="stat-strip-value">₹1,00,000</div><div class="stat-strip-label">Starting virtual cash</div></div>
+  <div class="stat-strip-item"><div class="stat-strip-value">0%</div><div class="stat-strip-label">Real money at risk</div></div>
+</section>
+
 <section class="section" aria-labelledby="how-it-works-title">
-  <div class="section-title">
+  <div class="section-title reveal">
     <h2 id="how-it-works-title">How It Works</h2>
     <p>From a two-minute questionnaire to a fully explained, personalized virtual portfolio.</p>
   </div>
-  <div class="steps-grid">
+  <div class="steps-grid stagger">
     <div class="card step-card"><div class="step-num">1</div><h4>Tell us about yourself</h4><p>Budget, horizon, goals and risk comfort.</p></div>
     <div class="card step-card"><div class="step-num">2</div><h4>Get your investor profile</h4><p>A clear, jargon-free risk category.</p></div>
     <div class="card step-card"><div class="step-num">3</div><h4>Build your portfolio</h4><p>A personalized set of Indian stocks, explained.</p></div>
@@ -45,39 +90,39 @@
 </section>
 
 <section class="section" aria-labelledby="features-title">
-  <div class="section-title">
+  <div class="section-title reveal">
     <h2 id="features-title">Everything a beginner investor needs</h2>
     <p>Not just recommendations — explanations, risk analytics, and a safe place to practice.</p>
   </div>
-  <div class="feature-grid">
-    <div class="card feature-card">
+  <div class="feature-grid stagger">
+    <div class="card card-hover feature-card">
       <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg></div>
       <h4>Personalized recommendations</h4><p>Stock picks weighted to your budget, risk profile and goals — never a generic list.</p>
     </div>
-    <div class="card feature-card">
+    <div class="card card-hover feature-card">
       <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 6"/></svg></div>
       <h4>Indian market analysis</h4><p>NSE-listed companies scored on financial strength, growth, valuation and more.</p>
     </div>
-    <div class="card feature-card">
+    <div class="card card-hover feature-card">
       <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div>
       <h4>Virtual trading</h4><p>₹1,00,000 in virtual cash to practice buying and selling — no real money, ever.</p>
     </div>
-    <div class="card feature-card">
+    <div class="card card-hover feature-card">
       <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg></div>
       <h4>Portfolio health</h4><p>A single score covering diversification, sector balance and risk.</p>
     </div>
-    <div class="card feature-card">
+    <div class="card card-hover feature-card">
       <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg></div>
       <h4>Risk insights</h4><p>Volatility, drawdown, Sharpe ratio and beta — explained in plain English.</p>
     </div>
-    <div class="card feature-card">
+    <div class="card card-hover feature-card">
       <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
       <h4>Learning tools</h4><p>Contextual tooltips and a full beginner-friendly education section.</p>
     </div>
   </div>
 </section>
 
-<section class="cta-band">
+<section class="cta-band reveal">
   <h2>Ready to build your first portfolio?</h2>
   <p>Takes about two minutes. No real money required.</p>
   <a href="signup.html" class="btn btn-primary btn-lg" style="margin-top:var(--space-4)">Get Started Free</a>
@@ -92,12 +137,6 @@
 
 <script src="js/config.js"></script>
 <script src="js/state.js"></script>
-<script>
-  document.getElementById("brandName").textContent = CONFIG.APP_NAME;
-  document.getElementById("brandMark").textContent = CONFIG.APP_NAME.charAt(0);
-  document.title = CONFIG.APP_NAME + " — " + CONFIG.APP_TAGLINE;
-  document.getElementById("year").textContent = new Date().getFullYear();
-  document.querySelector('.hero-ctas .btn-primary').href = Store.getSession() ? "dashboard.html" : "signup.html";
-</script>
+<script src="js/pages/landing.js"></script>
 </body>
 </html>

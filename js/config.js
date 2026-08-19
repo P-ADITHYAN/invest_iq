@@ -55,6 +55,12 @@
     // at the CDN (in api/fundamentals.js) and in-browser (marketData.js).
     FUNDAMENTALS_PROXY_URL: "/api/fundamentals",
 
+    // "Ask InvestIQ" chat assistant (Gemini, via api/chat.js). Explains
+    // the user's real, already-computed data in plain language — never
+    // gives buy/sell trading signals or invents numbers. See api/chat.js
+    // for the full system-instruction / grounding contract.
+    CHAT_PROXY_URL: "/api/chat",
+
     // ---- Market / currency ------------------------------------------------
     MARKET: "NSE",
     CURRENCY: "INR",

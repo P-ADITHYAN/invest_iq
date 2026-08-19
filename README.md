@@ -31,9 +31,10 @@ The product name "InvestIQ" is a single configurable constant (`CONFIG.APP_NAME`
 - Automated virtual rules: stop-loss, target, percentage stop/target, trailing stop, with a demo "simulate price update" control since there is no live streaming market feed
 - In-app notifications, contextual ⓘ tooltips on every technical metric
 - Learning section: 5 categories, each topic with explanation / example / why it matters / common mistake
-- Documented (stub) interfaces for AI explanations, What-If simulation, and backtesting — intentionally left unimplemented per the phased build plan
+- Documented (stub) interfaces for What-If simulation and backtesting — intentionally left unimplemented per the phased build plan
 - **Live prices from Yahoo Finance** (price, day/52-week range, historical charts) via a small serverless proxy, with automatic fallback to demo data if the proxy or Yahoo is unreachable — see §8
 - **Live fundamentals from a RapidAPI Yahoo Finance subscription** (P/E, P/B, EPS, beta, market cap, dividend yield, plus real-derived ROE / revenue growth / profit growth / debt-to-equity) for a 10-stock universe, with per-field `null` shown honestly as "N/A" rather than fabricated when a provider response is incomplete for a given stock — see §8
+- **"Ask InvestIQ" floating chat assistant** (Gemini-backed) that explains the user's real portfolio/risk-profile data and general investing concepts in plain language — grounded only in real, already-computed app data, and explicitly instructed to never issue buy/sell trading signals — see §8c
 
 ## 3. Architecture
 
@@ -65,7 +66,8 @@ Pages **never** call `fetch()`, `localStorage`, or an engine module directly —
 ├── learn.html, learn-topic.html, account.html
 ├── api/
 │   ├── yahoo.js                (Vercel serverless function — Yahoo Finance CORS proxy, no key needed, see §8)
-│   └── fundamentals.js          (Vercel serverless function — RapidAPI Yahoo Finance fundamentals, needs RAPIDAPI_KEY, see §8)
+│   ├── fundamentals.js          (Vercel serverless function — RapidAPI Yahoo Finance fundamentals, needs RAPIDAPI_KEY, see §8)
+│   └── chat.js                   (Vercel serverless function — "Ask InvestIQ" assistant via Gemini, needs GEMINI_API_KEY, see §8c)
 ├── package.json                ("type": "module" so the api/ functions can use ES module syntax)
 ├── css/
 │   ├── tokens.css          (design system variables — rebrand here)
@@ -84,6 +86,7 @@ Pages **never** call `fetch()`, `localStorage`, or an engine module directly —
 │   ├── portfolioAnalytics.js       (return/volatility/drawdown/Sharpe/beta/health)
 │   ├── ruleEngine.js                (stop-loss/target/trailing evaluation)
 │   ├── ai.js                         (AI explanation interface + Phase 10 stub docs)
+│   ├── chatWidget.js                  ("Ask InvestIQ" floating chat assistant — see §8c)
 │   ├── charts/svgCharts.js            (hand-rolled SVG chart renderers, zero deps)
 │   ├── ui.js, nav.js                   (shared DOM utils, app shell/nav)
 │   └── pages/*.js                       (one controller per HTML page)
@@ -174,6 +177,20 @@ GET /api/fundamentals?symbols=RELIANCE.NS,TCS.NS,...  (max 10, matching the free
 
 **Deployment implication:** both live-data paths only work on hosts that run Node.js serverless functions (Vercel does this natively — see §9). On a purely static host (GitHub Pages, Netlify drag-and-drop, Hostinger shared hosting) neither `api/` function will execute, and the app will automatically and permanently run on demo data there — it still works correctly, just without live prices or fundamentals.
 
+### 8c. "Ask InvestIQ" chat assistant — `api/chat.js` (needs your own Gemini key)
+
+A floating chat widget (`js/chatWidget.js`, mounted on every authenticated page) lets the user ask about their own portfolio, risk profile, or general investing concepts in plain language, backed by Google's Gemini API.
+
+**What it's grounded in:** the widget gathers the user's *real* data client-side — risk profile, holdings, recent transactions, and portfolio health where that page has `PortfolioAnalytics` loaded — and sends it as structured JSON to `api/chat.js` on every message. The server-side system instruction (see that file) restricts the model to referencing only that data, and explicitly forbids issuing buy/sell trading signals or price predictions — it explains what the app's own deterministic engines already computed, the same "explain, don't just tell them what to buy" principle as `js/recommendationEngine.js` and `js/ai.js`. Missing context (e.g. no portfolio yet, or a page that doesn't load `PortfolioAnalytics`) is simply omitted, never fabricated.
+
+```
+POST /api/chat   { message: string, history: [{role, text}], context: {...} }
+```
+
+**Setting up your `GEMINI_API_KEY`:** same steps as `RAPIDAPI_KEY` in §8b — get a key from [Google AI Studio](https://aistudio.google.com/), then Vercel dashboard → this project → **Settings → Environment Variables** → add `GEMINI_API_KEY` → **redeploy** (env vars only apply to deployments created after they're saved — if the assistant says it's "not set up yet" right after adding the key, that almost always means a redeploy is needed, not a code issue).
+
+**Failure handling:** if `GEMINI_API_KEY` is missing, or the request fails for any reason, the widget shows a friendly in-chat message rather than breaking — the rest of the app is completely unaffected either way, since the widget is fully independent of every other feature.
+
 ## 9. Deployment
 
 **Vercel (recommended — only option with live Yahoo data):** Connect the Git repository, framework preset **"Other"**, no build command, output = repository root. Vercel auto-detects `api/yahoo.js` as a serverless function — no extra configuration needed.
@@ -190,7 +207,8 @@ In every case, `index.html` must be served directly — no server-side rendering
 
 ## 10. Security Notes
 
-- No API keys, database credentials, or secrets exist anywhere in this codebase — Yahoo's chart endpoint needs none.
+- No API keys, database credentials, or secrets exist in this codebase. `RAPIDAPI_KEY` and `GEMINI_API_KEY` live only as server-side Vercel environment variables, read by `api/fundamentals.js` / `api/chat.js` respectively — never sent to or readable from the browser. Yahoo's chart endpoint (`api/yahoo.js`) needs no key at all.
+- The chat assistant (`api/chat.js`) never sees anything beyond what `js/chatWidget.js` sends it (the user's own already-computed data) — it has no direct access to `localStorage`, any account's real credentials, or any other user's data.
 - Demo-mode "password hashing" is a simple non-cryptographic string hash for prototyping convenience only — never reuse this pattern for a real user's real password.
 - Demo-mode account data (cash/holdings) is client-stored and **not tamper-proof** — this is acceptable only because it is virtual/simulated money. A live deployment must validate and store balances server-side.
 - The app never places real trades, never connects to a real brokerage, and never requests real financial credentials.
@@ -205,7 +223,7 @@ This platform provides educational and algorithmic analysis for informational pu
 
 ## 13. Future Features (documented, intentionally not built in this MVP)
 
-- **AI explanations** — `js/ai.js` already defines the interface (`explainStock`, `explainPortfolio`, `explainMetric`, `summarizePerformance`, `answerLearningQuestion`); demo mode composes text from real computed data. Wiring a live LLM only requires replacing each function body with an API call passing the same structured payload.
+- **Live AI explanations wired into `js/ai.js`'s canned functions** — `js/ai.js` still composes `explainStock`/`explainPortfolio`/etc. deterministically from real data; the live conversational counterpart is the "Ask InvestIQ" widget (§8c), but `js/ai.js`'s own functions haven't been switched to call Gemini directly. Doing so would just mean replacing each function body with a call to `api/chat.js`'s pattern.
 - **What-If Simulator** — recalculates a hypothetical portfolio (different budget/risk/holdings) without touching the real portfolio. Interface documented in `js/ai.js`.
 - **Backtesting** — historical strategy testing against a benchmark. Interface documented in `js/ai.js`.
 - **A live ROCE figure** — would require balance-sheet + income-statement data this provider doesn't reliably expose; rather than approximate it dishonestly, it stays `null`/"N/A" everywhere.

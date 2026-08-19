@@ -250,6 +250,7 @@
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  color: var(--color-text);
   cursor: pointer;
   transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
   width: 100%;
@@ -555,6 +556,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: var(--font
 .chat-suggestion-chip {
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
+  color: var(--color-text);
   border-radius: var(--radius-pill);
   padding: 4px 10px;
   font-size: var(--font-size-xs);

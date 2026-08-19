@@ -23,7 +23,7 @@
 }
 
 .qty-stepper { display: flex; align-items: center; gap: var(--space-2); }
-.qty-stepper button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--color-border-strong); background: var(--color-surface); cursor: pointer; font-weight: var(--font-weight-bold); transition: background var(--transition-fast), transform var(--transition-fast); }
+.qty-stepper button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--color-border-strong); background: var(--color-surface); color: var(--color-text); cursor: pointer; font-weight: var(--font-weight-bold); transition: background var(--transition-fast), transform var(--transition-fast); }
 .qty-stepper button:hover { background: var(--color-surface-alt); transform: scale(1.08); }
 .customize-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); gap: var(--space-3); flex-wrap: wrap; }
 

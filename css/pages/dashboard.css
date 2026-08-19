@@ -3,7 +3,7 @@
 .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); margin-top: var(--space-5); }
 @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
 .perf-range-tabs { display: flex; gap: 4px; }
-.perf-range-tabs button { border: none; background: var(--color-surface-alt); padding: 4px 10px; border-radius: var(--radius-pill); font-size: var(--font-size-xs); cursor: pointer; }
+.perf-range-tabs button { border: none; background: var(--color-surface-alt); color: var(--color-text); padding: 4px 10px; border-radius: var(--radius-pill); font-size: var(--font-size-xs); cursor: pointer; }
 .perf-range-tabs button.active { background: var(--color-secondary); color: #fff; }
 .notif-item { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
 .notif-item:last-child { border-bottom: none; }

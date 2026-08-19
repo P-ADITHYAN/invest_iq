@@ -138,7 +138,7 @@ export default async function handler(req, res) {
     const data = await resp.json();
     if (!resp.ok) {
       const detail = (data && data.error && data.error.message) || ("Gemini responded " + resp.status);
-      return res.status(502).json({ error: "Assistant is temporarily unavailable.", detail: detail });
+      return res.status(502).json({ error: "Assistant is temporarily unavailable.", detail: redact(detail, apiKey) });
     }
 
     const candidate = data.candidates && data.candidates[0];
@@ -152,7 +152,27 @@ export default async function handler(req, res) {
     return res.status(200).json({ reply: reply });
   } catch (e) {
     clearTimeout(timeout);
-    const detail = e.name === "AbortError" ? "Timed out waiting for Gemini to respond (>8.5s)." : e.message;
+    const detail = e.name === "AbortError" ? "Timed out waiting for Gemini to respond (>8.5s)." : redact(e.message, apiKey);
     return res.status(502).json({ error: "Failed to reach the assistant.", detail: detail });
   }
+}
+
+// Strips the raw API key (or any whitespace-separated fragment of it —
+// covers a malformed value with embedded newlines/duplication) out of
+// any string before it's ever allowed into an error response. Error
+// text can otherwise leak the exact header value verbatim, and this
+// endpoint's errors are visible to any caller — key material must
+// never appear in a response body. (Same helper as api/fundamentals.js;
+// duplicated rather than shared since these are independent serverless
+// functions with no shared module in this project.)
+function redact(text, apiKey) {
+  if (!text) return text;
+  let out = String(text);
+  if (apiKey) {
+    out = out.split(apiKey).join("[REDACTED]");
+    String(apiKey).split(/\s+/).forEach(function (fragment) {
+      if (fragment.length >= 8) out = out.split(fragment).join("[REDACTED]");
+    });
+  }
+  return out;
 }

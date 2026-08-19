@@ -77,7 +77,7 @@ export default async function handler(req, res) {
     const results = await Promise.all(list.map(function (symbol) { return fetchOneStock(symbol, apiKey); }));
     return res.status(200).json({ fundamentals: results });
   } catch (e) {
-    return res.status(502).json({ error: "Failed to fetch fundamentals.", detail: e.message });
+    return res.status(502).json({ error: "Failed to fetch fundamentals.", detail: redact(e.message, apiKey) });
   }
 }
 
@@ -86,7 +86,7 @@ async function fetchOneStock(symbol, apiKey) {
   try {
     summary = await rapidGet("/stock/get-summary", symbol, apiKey);
   } catch (e) {
-    fetchError = e.name === "AbortError" ? "Timed out waiting for the provider to respond (>8.5s)." : e.message;
+    fetchError = e.name === "AbortError" ? "Timed out waiting for the provider to respond (>8.5s)." : redact(e.message, apiKey);
   }
   if (!summary) return { symbol: symbol.replace(/\.NS$/, ""), error: fetchError || "No response from provider" };
 
@@ -124,21 +124,47 @@ async function fetchOneStock(symbol, apiKey) {
   };
 }
 
+// Strips the raw API key (or any whitespace-separated fragment of it —
+// covers a malformed value with embedded newlines/duplication) out of
+// any string before it's ever allowed into an error response. Error
+// text can otherwise leak the exact header value verbatim (e.g. from a
+// native `Headers.append` rejection when the value is malformed), and
+// this endpoint's errors are visible to any caller — key material must
+// never appear in a response body.
+function redact(text, apiKey) {
+  if (!text) return text;
+  let out = String(text);
+  if (apiKey) {
+    out = out.split(apiKey).join("[REDACTED]");
+    String(apiKey).split(/\s+/).forEach(function (fragment) {
+      if (fragment.length >= 8) out = out.split(fragment).join("[REDACTED]");
+    });
+  }
+  return out;
+}
+
 function rapidGet(path, symbol, apiKey) {
   const url = BASE_URL + path + "?symbol=" + encodeURIComponent(symbol) + "&region=IN&lang=en-IN";
   const controller = new AbortController();
   const timeout = setTimeout(function () { controller.abort(); }, 8500);
-  return fetch(url, {
-    headers: { "x-rapidapi-key": apiKey, "x-rapidapi-host": RAPIDAPI_HOST },
-    signal: controller.signal
-  }).then(function (resp) {
+  let resp;
+  try {
+    resp = fetch(url, {
+      headers: { "x-rapidapi-key": apiKey, "x-rapidapi-host": RAPIDAPI_HOST },
+      signal: controller.signal
+    });
+  } catch (e) {
+    clearTimeout(timeout);
+    throw new Error(redact(e.message, apiKey));
+  }
+  return resp.then(function (resp) {
     clearTimeout(timeout);
     if (!resp.ok) {
       // Surface RapidAPI's actual error body (e.g. "not subscribed",
       // "quota exceeded") instead of just the bare status code — this
       // is the difference between a diagnosable message and a guess.
       return resp.text().then(function (bodyText) {
-        throw new Error(path + " responded " + resp.status + ": " + bodyText.slice(0, 300));
+        throw new Error(redact(path + " responded " + resp.status + ": " + bodyText.slice(0, 300), apiKey));
       });
     }
     return resp.json();

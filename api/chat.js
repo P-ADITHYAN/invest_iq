@@ -123,8 +123,48 @@ export default async function handler(req, res) {
     generationConfig: { temperature: 0.4, maxOutputTokens: 700 }
   };
 
+  // Gemini's free-tier flash model occasionally returns a transient
+  // "model is currently experiencing high demand" overload — this is
+  // Google's server capacity, not anything wrong with our request, and
+  // it typically clears within a second or two. Retry once automatically
+  // rather than surfacing a failure to the user for something that would
+  // likely have just worked on the next try. Overall budget (both
+  // attempts combined) stays under Vercel Hobby's 10s function limit.
+  const deadline = Date.now() + 8500;
+  let lastError;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const remaining = deadline - Date.now();
+    if (remaining < 500) break;
+
+    try {
+      const result = await callGemini(payload, apiKey, Math.min(remaining, 6000));
+      if (result.ok) return res.status(200).json({ reply: result.reply });
+      lastError = result;
+      if (!result.overloaded) break; // a non-overload failure won't be fixed by retrying
+    } catch (e) {
+      lastError = { detail: e.name === "AbortError" ? "Timed out waiting for Gemini to respond." : redact(e.message, apiKey) };
+      break; // AbortError means we're already out of time budget
+    }
+
+    if (attempt === 1 && lastError && lastError.overloaded) {
+      await new Promise(function (r) { setTimeout(r, 500); });
+    }
+  }
+
+  if (lastError && lastError.emptyReply) {
+    return res.status(502).json({ error: "Assistant didn't return a response.", detail: lastError.detail });
+  }
+  return res.status(502).json({ error: "Assistant is temporarily unavailable.", detail: (lastError && lastError.detail) || "Unknown error." });
+}
+
+// Single attempt at calling Gemini. Returns either {ok:true, reply} or
+// {ok:false, detail, overloaded, emptyReply} — never throws for a normal
+// HTTP error response, only for a genuine network failure/timeout (left
+// to the caller to catch).
+async function callGemini(payload, apiKey, timeoutMs) {
   const controller = new AbortController();
-  const timeout = setTimeout(function () { controller.abort(); }, 8500);
+  const timeout = setTimeout(function () { controller.abort(); }, timeoutMs);
 
   try {
     const resp = await fetch(GEMINI_URL, {
@@ -133,12 +173,12 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload),
       signal: controller.signal
     });
-    clearTimeout(timeout);
 
     const data = await resp.json();
     if (!resp.ok) {
       const detail = (data && data.error && data.error.message) || ("Gemini responded " + resp.status);
-      return res.status(502).json({ error: "Assistant is temporarily unavailable.", detail: redact(detail, apiKey) });
+      const overloaded = resp.status === 503 || /overload|high demand|try again later/i.test(detail);
+      return { ok: false, detail: redact(detail, apiKey), overloaded: overloaded };
     }
 
     const candidate = data.candidates && data.candidates[0];
@@ -146,14 +186,12 @@ export default async function handler(req, res) {
 
     if (!reply) {
       const finishReason = candidate && candidate.finishReason;
-      return res.status(502).json({ error: "Assistant didn't return a response.", detail: finishReason || "empty response" });
+      return { ok: false, emptyReply: true, detail: finishReason || "empty response" };
     }
 
-    return res.status(200).json({ reply: reply });
-  } catch (e) {
+    return { ok: true, reply: reply };
+  } finally {
     clearTimeout(timeout);
-    const detail = e.name === "AbortError" ? "Timed out waiting for Gemini to respond (>8.5s)." : redact(e.message, apiKey);
-    return res.status(502).json({ error: "Failed to reach the assistant.", detail: detail });
   }
 }
 

@@ -185,6 +185,15 @@
     appendBubble("user", text);
     history.push({ role: "user", text: text });
 
+    performRequest(text, 0);
+  }
+
+  // Separated from send() so a "Retry" click can re-run the request
+  // without re-appending the user's message or duplicating history.
+  // api/chat.js already retries once internally on a transient Gemini
+  // overload; this is a second layer for when even that didn't land
+  // (or the failure was reaching our own server at all).
+  function performRequest(text, retryCount) {
     sending = true;
     document.getElementById("chatSendBtn").disabled = true;
     appendTyping();
@@ -201,27 +210,48 @@
       removeTyping();
       if (!result.ok || !result.data.reply) {
         const detail = result.data && (result.data.detail || result.data.error);
-        appendErrorBubble(detail);
+        appendErrorBubble(detail, text, retryCount);
         return;
       }
       appendBubble("assistant", result.data.reply);
       history.push({ role: "assistant", text: result.data.reply });
     }).catch(function (err) {
       removeTyping();
-      appendErrorBubble(err.message);
+      appendErrorBubble(err.message, text, retryCount);
     }).finally(function () {
       sending = false;
       document.getElementById("chatSendBtn").disabled = false;
     });
   }
 
-  function appendErrorBubble(detail) {
+  function appendErrorBubble(detail, originalText, retryCount) {
     const looksLikeMissingKey = detail && String(detail).indexOf("GEMINI_API_KEY") !== -1;
+    const looksOverloaded = detail && /overload|high demand|try again later|timed out/i.test(String(detail));
     const message = looksLikeMissingKey
       ? "The assistant isn't set up yet on this deployment (missing GEMINI_API_KEY). Everything else in the app still works fine."
-      : "Sorry, I couldn't reach the assistant just now. Please try again in a moment.";
+      : looksOverloaded
+        ? "The assistant is busy right now (high demand on the free model tier). Give it a moment and try again."
+        : "Sorry, I couldn't reach the assistant just now. Please try again in a moment.";
+
     const el = appendBubble("assistant", message);
     el.className = "chat-message error";
+
+    // Offer one client-side retry for transient failures — but not for
+    // a missing-key deployment issue, which retrying won't fix.
+    if (!looksLikeMissingKey && retryCount < 2) {
+      const bubble = el.querySelector(".chat-message-bubble");
+      const retryBtn = document.createElement("button");
+      retryBtn.type = "button";
+      retryBtn.className = "btn btn-outline btn-sm";
+      retryBtn.style.marginTop = "8px";
+      retryBtn.textContent = "Try again";
+      retryBtn.addEventListener("click", function () {
+        el.remove();
+        performRequest(originalText, retryCount + 1);
+      });
+      bubble.appendChild(document.createElement("br"));
+      bubble.appendChild(retryBtn);
+    }
   }
 
   document.addEventListener("DOMContentLoaded", mount);

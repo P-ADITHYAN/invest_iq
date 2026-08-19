@@ -37,7 +37,17 @@
  * as "live".
  *
  * Usage: GET /api/fundamentals?symbols=RELIANCE.NS,TCS.NS,...  (max 10)
+ *
+ * Timeout note: Vercel's Hobby (free) plan defaults serverless functions
+ * to a 10-second max execution time unless maxDuration is configured
+ * (and even then, Hobby plans may cap it below what's requested here).
+ * Per-symbol fetches run in parallel and each have their own timeout
+ * kept safely under that default, so a slow/hung provider call produces
+ * this code's own clean per-symbol error instead of the platform
+ * killing the whole function with no useful detail.
  */
+
+export const config = { maxDuration: 15 };
 
 const RAPIDAPI_HOST = "yahoo-finance-real-time1.p.rapidapi.com";
 const BASE_URL = "https://" + RAPIDAPI_HOST;
@@ -72,8 +82,13 @@ export default async function handler(req, res) {
 }
 
 async function fetchOneStock(symbol, apiKey) {
-  const summary = await rapidGet("/stock/get-summary", symbol, apiKey).catch(function () { return null; });
-  if (!summary) return { symbol: symbol.replace(/\.NS$/, ""), error: "No response from provider" };
+  let summary = null, fetchError = null;
+  try {
+    summary = await rapidGet("/stock/get-summary", symbol, apiKey);
+  } catch (e) {
+    fetchError = e.name === "AbortError" ? "Timed out waiting for the provider to respond (>8.5s)." : e.message;
+  }
+  if (!summary) return { symbol: symbol.replace(/\.NS$/, ""), error: fetchError || "No response from provider" };
 
   const stats = summary.defaultKeyStatistics || null;
   const summaryDetail = summary.summaryDetail || null;
@@ -112,13 +127,20 @@ async function fetchOneStock(symbol, apiKey) {
 function rapidGet(path, symbol, apiKey) {
   const url = BASE_URL + path + "?symbol=" + encodeURIComponent(symbol) + "&region=IN&lang=en-IN";
   const controller = new AbortController();
-  const timeout = setTimeout(function () { controller.abort(); }, 9000);
+  const timeout = setTimeout(function () { controller.abort(); }, 8500);
   return fetch(url, {
     headers: { "x-rapidapi-key": apiKey, "x-rapidapi-host": RAPIDAPI_HOST },
     signal: controller.signal
   }).then(function (resp) {
     clearTimeout(timeout);
-    if (!resp.ok) throw new Error(path + " responded " + resp.status);
+    if (!resp.ok) {
+      // Surface RapidAPI's actual error body (e.g. "not subscribed",
+      // "quota exceeded") instead of just the bare status code — this
+      // is the difference between a diagnosable message and a guess.
+      return resp.text().then(function (bodyText) {
+        throw new Error(path + " responded " + resp.status + ": " + bodyText.slice(0, 300));
+      });
+    }
     return resp.json();
   }).finally(function () { clearTimeout(timeout); });
 }

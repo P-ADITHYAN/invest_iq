@@ -24,7 +24,17 @@
  * same way js/ai.js's canned explanations do, just conversationally.
  *
  * Usage: POST /api/chat  { message, history: [{role,text}], context: {...} }
+ *
+ * Timeout note: Vercel's Hobby (free) plan defaults serverless functions
+ * to a 10-second max execution time unless maxDuration is configured
+ * (and even then, Hobby plans may cap it below what's requested here).
+ * The internal fetch timeout below is deliberately kept under that
+ * default so THIS code's own clean timeout message fires — instead of
+ * the platform killing the function first and producing a confusing
+ * generic "aborted" error with no useful detail.
  */
+
+export const config = { maxDuration: 15 };
 
 const GEMINI_MODEL = "gemini-flash-latest";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
@@ -114,7 +124,7 @@ export default async function handler(req, res) {
   };
 
   const controller = new AbortController();
-  const timeout = setTimeout(function () { controller.abort(); }, 15000);
+  const timeout = setTimeout(function () { controller.abort(); }, 8500);
 
   try {
     const resp = await fetch(GEMINI_URL, {
@@ -142,6 +152,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ reply: reply });
   } catch (e) {
     clearTimeout(timeout);
-    return res.status(502).json({ error: "Failed to reach the assistant.", detail: e.message });
+    const detail = e.name === "AbortError" ? "Timed out waiting for Gemini to respond (>8.5s)." : e.message;
+    return res.status(502).json({ error: "Failed to reach the assistant.", detail: detail });
   }
 }

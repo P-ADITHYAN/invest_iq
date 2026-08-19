@@ -124,12 +124,13 @@ export default async function handler(req, res) {
   };
 
   // Gemini's free-tier flash model occasionally returns a transient
-  // "model is currently experiencing high demand" overload — this is
-  // Google's server capacity, not anything wrong with our request, and
-  // it typically clears within a second or two. Retry once automatically
-  // rather than surfacing a failure to the user for something that would
-  // likely have just worked on the next try. Overall budget (both
-  // attempts combined) stays under Vercel Hobby's 10s function limit.
+  // "model is currently experiencing high demand" overload, or simply
+  // takes longer than usual to respond — neither is anything wrong with
+  // our request, and both typically clear on a second try. Retry once
+  // automatically rather than surfacing a failure to the user for
+  // something that would likely have just worked on the next try.
+  // Overall budget (both attempts combined) stays under Vercel Hobby's
+  // 10s function limit.
   const deadline = Date.now() + 8500;
   let lastError;
 
@@ -137,14 +138,19 @@ export default async function handler(req, res) {
     const remaining = deadline - Date.now();
     if (remaining < 500) break;
 
+    let timedOut = false;
     try {
-      const result = await callGemini(payload, apiKey, Math.min(remaining, 6000));
+      const result = await callGemini(payload, apiKey, Math.min(remaining, 7500));
       if (result.ok) return res.status(200).json({ reply: result.reply });
       lastError = result;
       if (!result.overloaded) break; // a non-overload failure won't be fixed by retrying
     } catch (e) {
-      lastError = { detail: e.name === "AbortError" ? "Timed out waiting for Gemini to respond." : redact(e.message, apiKey) };
-      break; // AbortError means we're already out of time budget
+      timedOut = e.name === "AbortError";
+      lastError = { detail: timedOut ? "Timed out waiting for Gemini to respond." : redact(e.message, apiKey), overloaded: timedOut };
+      // A timeout on this attempt doesn't mean we're out of budget overall —
+      // only that this one call ran long. If there's still time before the
+      // deadline, give it one more try rather than giving up immediately.
+      if (!timedOut) break;
     }
 
     if (attempt === 1 && lastError && lastError.overloaded) {

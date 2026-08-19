@@ -7,15 +7,26 @@
  * RAPIDAPI_KEY (set in Vercel Project Settings → Environment Variables)
  * — it is never sent to, or readable from, the browser.
  *
- * Every field returned here is either read directly from a real Yahoo
- * Finance response, or arithmetically derived from real reported
- * figures (ROE, YoY revenue/profit growth, debt/equity). Nothing is
- * invented: if a provider response is missing the underlying data for a
- * field (this happens — some tickers have sparse balance-sheet data
- * through this provider), that field comes back `null` rather than a
- * guessed number, and the frontend must treat `null` as "unavailable"
- * (see js/scoringEngine.js, which excludes null sub-scores from a
- * stock's score instead of penalizing/fabricating them).
+ * Sourced entirely from a single endpoint, /stock/get-summary — verified
+ * against a real response for an NSE stock to return defaultKeyStatistics,
+ * summaryDetail, price, and financialData together in one call, which is
+ * both cheaper on the free-tier quota (1 call/stock instead of 3) and
+ * more internally consistent than pulling different modules from
+ * different endpoint calls at slightly different snapshot times (an
+ * earlier version of this file did that and produced visibly
+ * inconsistent numbers — e.g. trailingPE was absent from one endpoint's
+ * summaryDetail for some tickers, silently falling back to forwardPE).
+ *
+ * Every field returned here is either read directly from that response,
+ * or arithmetically derived from real reported figures in it (ROE from
+ * real net income ÷ real book equity). Nothing is invented: if the
+ * response is missing the underlying data for a field, that field comes
+ * back `null` rather than a guessed number, and the frontend must treat
+ * `null` as "unavailable" (see js/scoringEngine.js, which excludes null
+ * sub-scores from a stock's score instead of penalizing/fabricating
+ * them). `roce` is always null — no field in this provider's response
+ * (checked: defaultKeyStatistics, financialData) exposes it or the raw
+ * EBIT/capital-employed figures needed to derive it honestly.
  *
  * This is a free-tier RapidAPI subscription, so this endpoint is
  * deliberately cache-friendly: responses are cached at Vercel's CDN
@@ -61,38 +72,40 @@ export default async function handler(req, res) {
 }
 
 async function fetchOneStock(symbol, apiKey) {
-  const [statistics, quoteSummary, financials] = await Promise.all([
-    rapidGet("/stock/get-statistics", symbol, apiKey).catch(function () { return null; }),
-    rapidGet("/stock/get-quote-summary", symbol, apiKey).catch(function () { return null; }),
-    rapidGet("/stock/get-financials", symbol, apiKey).catch(function () { return null; })
-  ]);
+  const summary = await rapidGet("/stock/get-summary", symbol, apiKey).catch(function () { return null; });
+  if (!summary) return { symbol: symbol.replace(/\.NS$/, ""), error: "No response from provider" };
 
-  const stats = statistics && statistics.defaultKeyStatistics;
-  const summaryDetail = quoteSummary && quoteSummary.quoteSummary && quoteSummary.quoteSummary.result &&
-    quoteSummary.quoteSummary.result[0] && quoteSummary.quoteSummary.result[0].summaryDetail;
-  const priceModule = quoteSummary && quoteSummary.quoteSummary && quoteSummary.quoteSummary.result &&
-    quoteSummary.quoteSummary.result[0] && quoteSummary.quoteSummary.result[0].price;
-
-  const growth = computeGrowthFromFinancials(financials);
-  const debtToEquity = computeDebtToEquity(financials);
-  const roe = computeROE(stats);
+  const stats = summary.defaultKeyStatistics || null;
+  const summaryDetail = summary.summaryDetail || null;
+  const priceModule = summary.price || null;
+  const financialData = summary.financialData || null;
 
   return {
     symbol: symbol.replace(/\.NS$/, ""),
     companyName: pick(priceModule && priceModule.longName, priceModule && priceModule.shortName),
     marketCap: pick(summaryDetail && summaryDetail.marketCap, priceModule && priceModule.marketCap),
+    // Real trailing P/E first (what most stock screeners show by default);
+    // only fall back to forward P/E if the provider truly has no trailing figure for this stock.
     pe: pick(summaryDetail && summaryDetail.trailingPE, summaryDetail && summaryDetail.forwardPE, stats && stats.forwardPE),
+    peIsForward: !(summaryDetail && summaryDetail.trailingPE != null),
     pb: pick(stats && stats.priceToBook),
     eps: pick(stats && stats.trailingEps, stats && stats.forwardEps),
+    epsIsForward: !(stats && stats.trailingEps != null),
     beta: pick(summaryDetail && summaryDetail.beta, stats && stats.beta),
-    dividendYield: toPercent(pick(summaryDetail && summaryDetail.dividendYield, summaryDetail && summaryDetail.trailingAnnualDividendYield)),
-    roe: roe,
-    roce: null, // not reliably derivable from this provider's data (see file header) — always null, never fabricated
-    debtToEquity: debtToEquity,
-    revenueGrowth: growth.revenueGrowth,
-    profitGrowth: growth.profitGrowth,
+    dividendYield: toPercent(pick(summaryDetail && summaryDetail.dividendYield)),
+    roe: computeROE(stats),
+    roce: null, // never sourced live — see file header
+    // financialData.debtToEquity is reported as a percentage (e.g. 5.517 = 0.05517 ratio) — real Yahoo-computed figure.
+    debtToEquity: pick(toRatio(financialData && financialData.debtToEquity)),
+    // financialData.revenueGrowth/earningsGrowth are real Yahoo-computed
+    // quarter-over-quarter YoY figures (matches earningsQuarterlyGrowth
+    // in defaultKeyStatistics) — the same convention most screener sites
+    // default to, and more internally consistent than deriving our own
+    // annual figure from a separate financialsChart call.
+    revenueGrowth: toPercent(financialData && financialData.revenueGrowth),
+    profitGrowth: toPercent(financialData && financialData.earningsGrowth),
     fetchedAt: new Date().toISOString(),
-    sourcesOk: { statistics: !!stats, quoteSummary: !!summaryDetail, financials: !!financials }
+    sourcesOk: { defaultKeyStatistics: !!stats, summaryDetail: !!summaryDetail, price: !!priceModule, financialData: !!financialData }
   };
 }
 
@@ -110,8 +123,7 @@ function rapidGet(path, symbol, apiKey) {
   }).finally(function () { clearTimeout(timeout); });
 }
 
-// Yahoo's "statistics"/"quoteSummary" endpoints return flat numbers;
-// its "financials" endpoint wraps many numbers as {raw, fmt, longFmt}.
+// Yahoo's flat modules return plain numbers directly (not {raw,fmt} wrappers).
 function rawVal(x) {
   if (x == null) return null;
   if (typeof x === "object" && "raw" in x) return x.raw;
@@ -129,6 +141,13 @@ function toPercent(decimalValue) {
   return decimalValue == null ? null : decimalValue * 100;
 }
 
+// financialData.debtToEquity comes back as a percentage (e.g. 41.2 means
+// a 0.412 ratio) in this provider's response — convert to a plain ratio
+// to match how the rest of the app (and most comparison sites) show it.
+function toRatio(percentValue) {
+  return percentValue == null ? null : percentValue / 100;
+}
+
 function computeROE(stats) {
   if (!stats) return null;
   const netIncome = rawVal(stats.netIncomeToCommon);
@@ -138,26 +157,4 @@ function computeROE(stats) {
   const equity = book * shares;
   if (!equity) return null;
   return (netIncome / equity) * 100;
-}
-
-function computeGrowthFromFinancials(financials) {
-  const yearly = financials && financials.financialsChart && financials.financialsChart.yearly;
-  if (!yearly || yearly.length < 2) return { revenueGrowth: null, profitGrowth: null };
-
-  // Yahoo returns these in ascending date order; take the latest two.
-  const latest = yearly[yearly.length - 1];
-  const prev = yearly[yearly.length - 2];
-  const revenueGrowth = prev && prev.revenue ? ((latest.revenue - prev.revenue) / Math.abs(prev.revenue)) * 100 : null;
-  const profitGrowth = prev && prev.earnings ? ((latest.earnings - prev.earnings) / Math.abs(prev.earnings)) * 100 : null;
-  return { revenueGrowth: revenueGrowth, profitGrowth: profitGrowth };
-}
-
-function computeDebtToEquity(financials) {
-  const statement = financials && financials.balanceSheetHistory && financials.balanceSheetHistory.balanceSheetStatements &&
-    financials.balanceSheetHistory.balanceSheetStatements[0];
-  if (!statement) return null;
-  const totalLiab = rawVal(statement.totalLiab);
-  const equity = rawVal(statement.totalStockholderEquity);
-  if (totalLiab == null || !equity) return null;
-  return totalLiab / equity;
 }

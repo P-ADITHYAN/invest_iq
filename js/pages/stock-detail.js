@@ -106,9 +106,9 @@
       '<div class="card" style="margin-bottom:var(--space-5)">' +
       '<div class="row-between"><h3>Fundamentals</h3>' + (stock._fundamentalsLive ? '<span class="badge badge-success">Live</span>' : '<span class="badge badge-neutral">Estimated</span>') + "</div>" +
       '<div class="fundamentals-grid">' +
-      fundamentalRow("P/E", stock.pe, function (v) { return v.toFixed(1); }, "pe") +
+      fundamentalRow(stock.peIsForward ? "P/E (Fwd)" : "P/E", stock.pe, function (v) { return v.toFixed(1); }, "pe") +
       fundamentalRow("P/B", stock.pb, function (v) { return v.toFixed(1); }, "pb") +
-      fundamentalRow("EPS", stock.eps, function (v) { return UI.formatINR(v); }) +
+      fundamentalRow(stock.epsIsForward ? "EPS (Fwd)" : "EPS", stock.eps, function (v) { return UI.formatINR(v); }) +
       fundamentalRow("ROE", stock.roe, function (v) { return v.toFixed(1) + "%"; }, "roe") +
       fundamentalRow("Debt/Equity", stock.debtToEquity, function (v) { return v.toFixed(2); }, "debtToEquity") +
       fundamentalRow("Revenue Growth", stock.revenueGrowth, function (v) { return UI.formatPercent(v); }, "revenueGrowth") +

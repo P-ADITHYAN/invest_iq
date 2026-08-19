@@ -92,8 +92,10 @@
       companyName: fx.companyName || stock.companyName,
       marketCap: fx.marketCap != null ? fx.marketCap : stock.marketCap,
       pe: fx.pe,
+      peIsForward: !!fx.peIsForward, // true when trailing P/E wasn't available and this is forward P/E instead
       pb: fx.pb,
       eps: fx.eps,
+      epsIsForward: !!fx.epsIsForward,
       beta: fx.beta != null ? fx.beta : stock.beta,
       dividendYield: fx.dividendYield,
       roe: fx.roe,
@@ -294,8 +296,10 @@
       const live = !!stock._fundamentalsLive;
       return {
         pe: live ? stock.pe : demoBase.pe,
+        peIsForward: live && !!stock.peIsForward,
         pb: live ? stock.pb : demoBase.pb,
         eps: live ? stock.eps : demoBase.eps,
+        epsIsForward: live && !!stock.epsIsForward,
         roe: live ? stock.roe : demoBase.roe,
         roce: null, // never available — see api/fundamentals.js
         debtToEquity: live ? stock.debtToEquity : demoBase.debtToEquity,

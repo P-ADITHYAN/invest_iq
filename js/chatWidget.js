@@ -192,7 +192,9 @@
   // without re-appending the user's message or duplicating history.
   // api/chat.js already retries once internally on a transient Gemini
   // overload; this is a second layer for when even that didn't land
-  // (or the failure was reaching our own server at all).
+  // (or the failure was reaching our own server at all). Capped at a
+  // single client-side retry — see appendErrorBubble — to keep quota
+  // usage per message bounded on a free-tier key.
   function performRequest(text, retryCount) {
     sending = true;
     document.getElementById("chatSendBtn").disabled = true;
@@ -210,7 +212,7 @@
       removeTyping();
       if (!result.ok || !result.data.reply) {
         const detail = result.data && (result.data.detail || result.data.error);
-        appendErrorBubble(detail, text, retryCount);
+        appendErrorBubble(detail, text, retryCount, result.data && result.data.quotaExceeded);
         return;
       }
       appendBubble("assistant", result.data.reply);
@@ -224,21 +226,28 @@
     });
   }
 
-  function appendErrorBubble(detail, originalText, retryCount) {
+  function appendErrorBubble(detail, originalText, retryCount, quotaExceeded) {
     const looksLikeMissingKey = detail && String(detail).indexOf("GEMINI_API_KEY") !== -1;
     const looksOverloaded = detail && /overload|high demand|try again later|timed out/i.test(String(detail));
-    const message = looksLikeMissingKey
-      ? "The assistant isn't set up yet on this deployment (missing GEMINI_API_KEY). Everything else in the app still works fine."
-      : looksOverloaded
-        ? "The assistant is busy right now (high demand on the free model tier). Give it a moment and try again."
-        : "Sorry, I couldn't reach the assistant just now. Please try again in a moment.";
+    const message = quotaExceeded
+      ? "The assistant has hit its free-tier daily usage limit — this isn't a glitch, and trying again right now won't help. It resets on its own; check back later, or ask whoever set up this deployment to enable billing on the Gemini API key for a higher limit."
+      : looksLikeMissingKey
+        ? "The assistant isn't set up yet on this deployment (missing GEMINI_API_KEY). Everything else in the app still works fine."
+        : looksOverloaded
+          ? "The assistant is busy right now (high demand on the free model tier). Give it a moment and try again."
+          : "Sorry, I couldn't reach the assistant just now. Please try again in a moment.";
 
     const el = appendBubble("assistant", message);
     el.className = "chat-message error";
 
     // Offer one client-side retry for transient failures — but not for
-    // a missing-key deployment issue, which retrying won't fix.
-    if (!looksLikeMissingKey && retryCount < 2) {
+    // a missing-key deployment issue or an exhausted quota, neither of
+    // which an immediate retry can fix (and retrying a quota error only
+    // burns more of a limit that's already at zero). Capped at a single
+    // retry (not two) since api/chat.js already makes up to 2 Gemini
+    // calls per attempt — on a free-tier key every extra click here is
+    // real quota spent, so keep the worst case small.
+    if (!looksLikeMissingKey && !quotaExceeded && retryCount < 1) {
       const bubble = el.querySelector(".chat-message-bubble");
       const retryBtn = document.createElement("button");
       retryBtn.type = "button";

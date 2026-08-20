@@ -161,6 +161,13 @@ export default async function handler(req, res) {
   if (lastError && lastError.emptyReply) {
     return res.status(502).json({ error: "Assistant didn't return a response.", detail: lastError.detail });
   }
+  if (lastError && lastError.quotaExceeded) {
+    return res.status(429).json({
+      error: "The assistant's free-tier quota has been used up for now.",
+      detail: lastError.detail,
+      quotaExceeded: true
+    });
+  }
   return res.status(502).json({ error: "Assistant is temporarily unavailable.", detail: (lastError && lastError.detail) || "Unknown error." });
 }
 
@@ -183,8 +190,14 @@ async function callGemini(payload, apiKey, timeoutMs) {
     const data = await resp.json();
     if (!resp.ok) {
       const detail = (data && data.error && data.error.message) || ("Gemini responded " + resp.status);
-      const overloaded = resp.status === 503 || /overload|high demand|try again later/i.test(detail);
-      return { ok: false, detail: redact(detail, apiKey), overloaded: overloaded };
+      // A quota/rate-limit error (429, RESOURCE_EXHAUSTED, "quota") is NOT
+      // the same thing as a transient overload — retrying it immediately
+      // just burns more of an already-exhausted quota and will fail again.
+      // Check for it first so it never gets misclassified as "overloaded"
+      // (which triggers a retry) below.
+      const quotaExceeded = resp.status === 429 || /quota|resource_exhausted|rate limit/i.test(detail);
+      const overloaded = !quotaExceeded && (resp.status === 503 || /overload|high demand|try again later/i.test(detail));
+      return { ok: false, detail: redact(detail, apiKey), overloaded: overloaded, quotaExceeded: quotaExceeded };
     }
 
     const candidate = data.candidates && data.candidates[0];

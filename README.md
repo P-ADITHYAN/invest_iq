@@ -34,7 +34,7 @@ The product name "InvestIQ" is a single configurable constant (`CONFIG.APP_NAME`
 - Documented (stub) interfaces for What-If simulation and backtesting — intentionally left unimplemented per the phased build plan
 - **Live prices from Yahoo Finance** (price, day/52-week range, historical charts) via a small serverless proxy, with automatic fallback to demo data if the proxy or Yahoo is unreachable — see §8
 - **Live fundamentals from a RapidAPI Yahoo Finance subscription** (P/E, P/B, EPS, beta, market cap, dividend yield, plus real-derived ROE / revenue growth / profit growth / debt-to-equity) for a 10-stock universe, with per-field `null` shown honestly as "N/A" rather than fabricated when a provider response is incomplete for a given stock — see §8
-- **"Ask InvestIQ" floating chat assistant** (Gemini-backed) that explains the user's real portfolio/risk-profile data and general investing concepts in plain language — grounded only in real, already-computed app data, and explicitly instructed to never issue buy/sell trading signals — see §8c
+- **"Ask InvestIQ" floating chat assistant** (NVIDIA NIM-backed, Llama 3.3 70B Instruct) that explains the user's real portfolio/risk-profile data and general investing concepts in plain language — grounded only in real, already-computed app data, and explicitly instructed to never issue buy/sell trading signals — see §8c
 
 ## 3. Architecture
 
@@ -67,7 +67,7 @@ Pages **never** call `fetch()`, `localStorage`, or an engine module directly —
 ├── api/
 │   ├── yahoo.js                (Vercel serverless function — Yahoo Finance CORS proxy, no key needed, see §8)
 │   ├── fundamentals.js          (Vercel serverless function — RapidAPI Yahoo Finance fundamentals, needs RAPIDAPI_KEY, see §8)
-│   └── chat.js                   (Vercel serverless function — "Ask InvestIQ" assistant via Gemini, needs GEMINI_API_KEY, see §8c)
+│   └── chat.js                   (Vercel serverless function — "Ask InvestIQ" assistant via NVIDIA NIM, needs NVIDIA_API_KEY, see §8c)
 ├── package.json                ("type": "module" so the api/ functions can use ES module syntax)
 ├── css/
 │   ├── tokens.css          (design system variables — rebrand here)
@@ -177,9 +177,9 @@ GET /api/fundamentals?symbols=RELIANCE.NS,TCS.NS,...  (max 10, matching the free
 
 **Deployment implication:** both live-data paths only work on hosts that run Node.js serverless functions (Vercel does this natively — see §9). On a purely static host (GitHub Pages, Netlify drag-and-drop, Hostinger shared hosting) neither `api/` function will execute, and the app will automatically and permanently run on demo data there — it still works correctly, just without live prices or fundamentals.
 
-### 8c. "Ask InvestIQ" chat assistant — `api/chat.js` (needs your own Gemini key)
+### 8c. "Ask InvestIQ" chat assistant — `api/chat.js` (needs your own NVIDIA NIM key)
 
-A floating chat widget (`js/chatWidget.js`, mounted on every authenticated page) lets the user ask about their own portfolio, risk profile, or general investing concepts in plain language, backed by Google's Gemini API.
+A floating chat widget (`js/chatWidget.js`, mounted on every authenticated page) lets the user ask about their own portfolio, risk profile, or general investing concepts in plain language, backed by NVIDIA NIM's OpenAI-compatible API (Llama 3.3 70B Instruct). Originally backed by Google's Gemini API; switched to NVIDIA NIM because Gemini's free tier kept hitting its daily quota under normal use — NVIDIA's free developer key has much more generous per-model rate limits for this workload.
 
 **What it's grounded in:** the widget gathers the user's *real* data client-side — risk profile, holdings, recent transactions, and portfolio health where that page has `PortfolioAnalytics` loaded — and sends it as structured JSON to `api/chat.js` on every message. The server-side system instruction (see that file) restricts the model to referencing only that data, and explicitly forbids issuing buy/sell trading signals or price predictions — it explains what the app's own deterministic engines already computed, the same "explain, don't just tell them what to buy" principle as `js/recommendationEngine.js` and `js/ai.js`. Missing context (e.g. no portfolio yet, or a page that doesn't load `PortfolioAnalytics`) is simply omitted, never fabricated.
 
@@ -187,9 +187,9 @@ A floating chat widget (`js/chatWidget.js`, mounted on every authenticated page)
 POST /api/chat   { message: string, history: [{role, text}], context: {...} }
 ```
 
-**Setting up your `GEMINI_API_KEY`:** same steps as `RAPIDAPI_KEY` in §8b — get a key from [Google AI Studio](https://aistudio.google.com/), then Vercel dashboard → this project → **Settings → Environment Variables** → add `GEMINI_API_KEY` → **redeploy** (env vars only apply to deployments created after they're saved — if the assistant says it's "not set up yet" right after adding the key, that almost always means a redeploy is needed, not a code issue).
+**Setting up your `NVIDIA_API_KEY`:** same steps as `RAPIDAPI_KEY` in §8b — get a free key from [build.nvidia.com](https://build.nvidia.com/), then Vercel dashboard → this project → **Settings → Environment Variables** → add `NVIDIA_API_KEY` → **redeploy** (env vars only apply to deployments created after they're saved — if the assistant says it's "not set up yet" right after adding the key, that almost always means a redeploy is needed, not a code issue).
 
-**Failure handling:** if `GEMINI_API_KEY` is missing, or the request fails for any reason, the widget shows a friendly in-chat message rather than breaking — the rest of the app is completely unaffected either way, since the widget is fully independent of every other feature.
+**Failure handling:** if `NVIDIA_API_KEY` is missing, or the request fails for any reason, the widget shows a friendly in-chat message rather than breaking — the rest of the app is completely unaffected either way, since the widget is fully independent of every other feature. A genuine rate-limit/quota response is distinguished from a transient overload: quota errors show an honest "resets on its own" message with no futile retry button, instead of the misleading generic error.
 
 ## 9. Deployment
 
@@ -207,7 +207,7 @@ In every case, `index.html` must be served directly — no server-side rendering
 
 ## 10. Security Notes
 
-- No API keys, database credentials, or secrets exist in this codebase. `RAPIDAPI_KEY` and `GEMINI_API_KEY` live only as server-side Vercel environment variables, read by `api/fundamentals.js` / `api/chat.js` respectively — never sent to or readable from the browser. Yahoo's chart endpoint (`api/yahoo.js`) needs no key at all.
+- No API keys, database credentials, or secrets exist in this codebase. `RAPIDAPI_KEY` and `NVIDIA_API_KEY` live only as server-side Vercel environment variables, read by `api/fundamentals.js` / `api/chat.js` respectively — never sent to or readable from the browser. Yahoo's chart endpoint (`api/yahoo.js`) needs no key at all.
 - The chat assistant (`api/chat.js`) never sees anything beyond what `js/chatWidget.js` sends it (the user's own already-computed data) — it has no direct access to `localStorage`, any account's real credentials, or any other user's data.
 - Demo-mode "password hashing" is a simple non-cryptographic string hash for prototyping convenience only — never reuse this pattern for a real user's real password.
 - Demo-mode account data (cash/holdings) is client-stored and **not tamper-proof** — this is acceptable only because it is virtual/simulated money. A live deployment must validate and store balances server-side.
@@ -223,7 +223,7 @@ This platform provides educational and algorithmic analysis for informational pu
 
 ## 13. Future Features (documented, intentionally not built in this MVP)
 
-- **Live AI explanations wired into `js/ai.js`'s canned functions** — `js/ai.js` still composes `explainStock`/`explainPortfolio`/etc. deterministically from real data; the live conversational counterpart is the "Ask InvestIQ" widget (§8c), but `js/ai.js`'s own functions haven't been switched to call Gemini directly. Doing so would just mean replacing each function body with a call to `api/chat.js`'s pattern.
+- **Live AI explanations wired into `js/ai.js`'s canned functions** — `js/ai.js` still composes `explainStock`/`explainPortfolio`/etc. deterministically from real data; the live conversational counterpart is the "Ask InvestIQ" widget (§8c), but `js/ai.js`'s own functions haven't been switched to call NVIDIA NIM directly. Doing so would just mean replacing each function body with a call to `api/chat.js`'s pattern.
 - **What-If Simulator** — recalculates a hypothetical portfolio (different budget/risk/holdings) without touching the real portfolio. Interface documented in `js/ai.js`.
 - **Backtesting** — historical strategy testing against a benchmark. Interface documented in `js/ai.js`.
 - **A live ROCE figure** — would require balance-sheet + income-statement data this provider doesn't reliably expose; rather than approximate it dishonestly, it stays `null`/"N/A" everywhere.

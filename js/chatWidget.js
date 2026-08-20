@@ -2,7 +2,7 @@
  * chatWidget.js — "Ask InvestIQ" floating chat assistant, mounted on
  * every authenticated page (alongside nav.js). Self-contained: injects
  * its own markup, gathers the user's real data client-side, and talks
- * to api/chat.js (Gemini, server-side key only — see that file).
+ * to api/chat.js (NVIDIA NIM, server-side key only — see that file).
  *
  * Design principle carried over from js/ai.js and js/recommendationEngine.js:
  * the assistant only ever sees data this app already computed for real
@@ -190,7 +190,7 @@
 
   // Separated from send() so a "Retry" click can re-run the request
   // without re-appending the user's message or duplicating history.
-  // api/chat.js already retries once internally on a transient Gemini
+  // api/chat.js already retries once internally on a transient NVIDIA NIM
   // overload; this is a second layer for when even that didn't land
   // (or the failure was reaching our own server at all). Capped at a
   // single client-side retry — see appendErrorBubble — to keep quota
@@ -227,12 +227,12 @@
   }
 
   function appendErrorBubble(detail, originalText, retryCount, quotaExceeded) {
-    const looksLikeMissingKey = detail && String(detail).indexOf("GEMINI_API_KEY") !== -1;
+    const looksLikeMissingKey = detail && String(detail).indexOf("NVIDIA_API_KEY") !== -1;
     const looksOverloaded = detail && /overload|high demand|try again later|timed out/i.test(String(detail));
     const message = quotaExceeded
-      ? "The assistant has hit its free-tier daily usage limit — this isn't a glitch, and trying again right now won't help. It resets on its own; check back later, or ask whoever set up this deployment to enable billing on the Gemini API key for a higher limit."
+      ? "The assistant has hit its free-tier daily usage limit — this isn't a glitch, and trying again right now won't help. It resets on its own; check back later, or ask whoever set up this deployment about raising the NVIDIA NIM API key's rate limit."
       : looksLikeMissingKey
-        ? "The assistant isn't set up yet on this deployment (missing GEMINI_API_KEY). Everything else in the app still works fine."
+        ? "The assistant isn't set up yet on this deployment (missing NVIDIA_API_KEY). Everything else in the app still works fine."
         : looksOverloaded
           ? "The assistant is busy right now (high demand on the free model tier). Give it a moment and try again."
           : "Sorry, I couldn't reach the assistant just now. Please try again in a moment.";
@@ -244,7 +244,7 @@
     // a missing-key deployment issue or an exhausted quota, neither of
     // which an immediate retry can fix (and retrying a quota error only
     // burns more of a limit that's already at zero). Capped at a single
-    // retry (not two) since api/chat.js already makes up to 2 Gemini
+    // retry (not two) since api/chat.js already makes up to 2 NVIDIA NIM
     // calls per attempt — on a free-tier key every extra click here is
     // real quota spent, so keep the worst case small.
     if (!looksLikeMissingKey && !quotaExceeded && retryCount < 1) {

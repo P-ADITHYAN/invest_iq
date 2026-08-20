@@ -1,19 +1,26 @@
 /**
  * api/chat.js — Vercel serverless proxy for the "Ask InvestIQ" chat
- * assistant, backed by Google's Gemini API.
+ * assistant, backed by NVIDIA NIM's OpenAI-compatible chat completions
+ * API (https://build.nvidia.com), using Llama 3.3 70B Instruct.
  *
- * The Gemini key lives ONLY in the server-side environment variable
- * GEMINI_API_KEY (set in Vercel Project Settings → Environment Variables)
- * — it is never sent to, or readable from, the browser. Same pattern as
- * RAPIDAPI_KEY in api/fundamentals.js.
+ * Previously backed by Google's Gemini API. Switched away because
+ * Gemini's free tier kept hitting daily quota limits under normal
+ * testing use. NVIDIA NIM's free developer API key has much more
+ * generous per-model rate limits for the same "explain the app's own
+ * data conversationally" workload this endpoint does.
+ *
+ * The key lives ONLY in the server-side environment variable
+ * NVIDIA_API_KEY (set in Vercel Project Settings → Environment
+ * Variables) — it is never sent to, or readable from, the browser.
+ * Same pattern as RAPIDAPI_KEY in api/fundamentals.js.
  *
  * The frontend (js/chatWidget.js) gathers the user's REAL data client-side
  * (risk profile, holdings, portfolio health, recent transactions — all
  * already computed by the app's own deterministic engines) and sends it
  * as structured JSON in the request body. This function does not fetch
  * or know anything about the user's account itself — it only forwards
- * {message, history, context} to Gemini with a system instruction that
- * constrains the model to that context.
+ * {message, history, context} to the model with a system instruction
+ * that constrains it to that context.
  *
  * Why the system instruction matters here specifically: this app's whole
  * design principle is "explain, don't just tell the user what to buy"
@@ -36,8 +43,8 @@
 
 export const config = { maxDuration: 15 };
 
-const GEMINI_MODEL = "gemini-flash-latest";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
+const NIM_MODEL = "meta/llama-3.3-70b-instruct";
+const NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 
 const SYSTEM_INSTRUCTION = [
   "You are the \"Ask InvestIQ\" assistant inside InvestIQ, an educational, India-only virtual stock portfolio app. All trading in this app is simulated with virtual currency — no real money is ever involved.",
@@ -71,9 +78,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Use POST." });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+    return res.status(500).json({ error: "NVIDIA_API_KEY is not configured on the server." });
   }
 
   let body;
@@ -97,40 +104,41 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "history must be an array of at most 20 turns." });
   }
 
-  // Turn the client-provided context + prior turns into Gemini's
-  // `contents` shape. The context is injected as the first "user" turn
-  // so the model treats it as ground truth for the rest of the chat.
-  const contents = [];
-  contents.push({
+  // Turn the client-provided context + prior turns into OpenAI-style
+  // `messages`. The context is injected as its own user turn right
+  // after the system prompt so the model treats it as ground truth.
+  const messages = [{ role: "system", content: SYSTEM_INSTRUCTION }];
+  messages.push({
     role: "user",
-    parts: [{ text: "Here is my current InvestIQ data as JSON — use only this for any numbers you reference:\n" + JSON.stringify(context) }]
+    content: "Here is my current InvestIQ data as JSON — use only this for any numbers you reference:\n" + JSON.stringify(context)
   });
-  contents.push({
-    role: "model",
-    parts: [{ text: "Got it — I'll use only that data for any numbers I mention. What would you like to know?" }]
+  messages.push({
+    role: "assistant",
+    content: "Got it — I'll use only that data for any numbers I mention. What would you like to know?"
   });
 
   history.slice(-20).forEach(function (turn) {
     if (!turn || !turn.text) return;
-    contents.push({ role: turn.role === "assistant" ? "model" : "user", parts: [{ text: String(turn.text).slice(0, 2000) }] });
+    messages.push({ role: turn.role === "assistant" ? "assistant" : "user", content: String(turn.text).slice(0, 2000) });
   });
 
-  contents.push({ role: "user", parts: [{ text: message }] });
+  messages.push({ role: "user", content: message });
 
   const payload = {
-    contents: contents,
-    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-    generationConfig: { temperature: 0.4, maxOutputTokens: 700 }
+    model: NIM_MODEL,
+    messages: messages,
+    temperature: 0.4,
+    max_tokens: 700,
+    stream: false
   };
 
-  // Gemini's free-tier flash model occasionally returns a transient
-  // "model is currently experiencing high demand" overload, or simply
-  // takes longer than usual to respond — neither is anything wrong with
-  // our request, and both typically clear on a second try. Retry once
-  // automatically rather than surfacing a failure to the user for
-  // something that would likely have just worked on the next try.
-  // Overall budget (both attempts combined) stays under Vercel Hobby's
-  // 10s function limit.
+  // NVIDIA NIM occasionally returns a transient 503/"model is currently
+  // overloaded" during traffic spikes, or simply takes longer than usual
+  // to respond — neither is anything wrong with our request, and both
+  // typically clear on a second try. Retry once automatically rather
+  // than surfacing a failure to the user for something that would
+  // likely have just worked on the next try. Overall budget (both
+  // attempts combined) stays under Vercel Hobby's 10s function limit.
   const deadline = Date.now() + 8500;
   let lastError;
 
@@ -140,13 +148,13 @@ export default async function handler(req, res) {
 
     let timedOut = false;
     try {
-      const result = await callGemini(payload, apiKey, Math.min(remaining, 7500));
+      const result = await callNim(payload, apiKey, Math.min(remaining, 7500));
       if (result.ok) return res.status(200).json({ reply: result.reply });
       lastError = result;
       if (!result.overloaded) break; // a non-overload failure won't be fixed by retrying
     } catch (e) {
       timedOut = e.name === "AbortError";
-      lastError = { detail: timedOut ? "Timed out waiting for Gemini to respond." : redact(e.message, apiKey), overloaded: timedOut };
+      lastError = { detail: timedOut ? "Timed out waiting for the assistant to respond." : redact(e.message, apiKey), overloaded: timedOut };
       // A timeout on this attempt doesn't mean we're out of budget overall —
       // only that this one call ran long. If there's still time before the
       // deadline, give it one more try rather than giving up immediately.
@@ -171,40 +179,40 @@ export default async function handler(req, res) {
   return res.status(502).json({ error: "Assistant is temporarily unavailable.", detail: (lastError && lastError.detail) || "Unknown error." });
 }
 
-// Single attempt at calling Gemini. Returns either {ok:true, reply} or
-// {ok:false, detail, overloaded, emptyReply} — never throws for a normal
-// HTTP error response, only for a genuine network failure/timeout (left
-// to the caller to catch).
-async function callGemini(payload, apiKey, timeoutMs) {
+// Single attempt at calling NVIDIA NIM. Returns either {ok:true, reply} or
+// {ok:false, detail, overloaded, quotaExceeded, emptyReply} — never throws
+// for a normal HTTP error response, only for a genuine network
+// failure/timeout (left to the caller to catch).
+async function callNim(payload, apiKey, timeoutMs) {
   const controller = new AbortController();
   const timeout = setTimeout(function () { controller.abort(); }, timeoutMs);
 
   try {
-    const resp = await fetch(GEMINI_URL, {
+    const resp = await fetch(NIM_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
       body: JSON.stringify(payload),
       signal: controller.signal
     });
 
     const data = await resp.json();
     if (!resp.ok) {
-      const detail = (data && data.error && data.error.message) || ("Gemini responded " + resp.status);
-      // A quota/rate-limit error (429, RESOURCE_EXHAUSTED, "quota") is NOT
-      // the same thing as a transient overload — retrying it immediately
-      // just burns more of an already-exhausted quota and will fail again.
-      // Check for it first so it never gets misclassified as "overloaded"
-      // (which triggers a retry) below.
-      const quotaExceeded = resp.status === 429 || /quota|resource_exhausted|rate limit/i.test(detail);
-      const overloaded = !quotaExceeded && (resp.status === 503 || /overload|high demand|try again later/i.test(detail));
-      return { ok: false, detail: redact(detail, apiKey), overloaded: overloaded, quotaExceeded: quotaExceeded };
+      const detail = (data && data.error && (data.error.message || data.error)) || ("NVIDIA NIM responded " + resp.status);
+      // A quota/rate-limit error (429) is NOT the same thing as a
+      // transient overload — retrying it immediately just burns more of
+      // an already-exhausted quota and will fail again. Check for it
+      // first so it never gets misclassified as "overloaded" (which
+      // triggers a retry) below.
+      const quotaExceeded = resp.status === 429 || /quota|rate limit|too many requests/i.test(String(detail));
+      const overloaded = !quotaExceeded && (resp.status === 503 || /overload|high demand|try again later/i.test(String(detail)));
+      return { ok: false, detail: redact(String(detail), apiKey), overloaded: overloaded, quotaExceeded: quotaExceeded };
     }
 
-    const candidate = data.candidates && data.candidates[0];
-    const reply = candidate && candidate.content && candidate.content.parts && candidate.content.parts.map(function (p) { return p.text || ""; }).join("");
+    const choice = data.choices && data.choices[0];
+    const reply = choice && choice.message && choice.message.content;
 
     if (!reply) {
-      const finishReason = candidate && candidate.finishReason;
+      const finishReason = choice && choice.finish_reason;
       return { ok: false, emptyReply: true, detail: finishReason || "empty response" };
     }
 

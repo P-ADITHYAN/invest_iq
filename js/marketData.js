@@ -77,6 +77,7 @@
     return Object.assign({}, demoBase, {
       companyName: liveQuote.companyName || demoBase.companyName,
       price: liveQuote.price != null ? liveQuote.price : demoBase.price,
+      previousClose: liveQuote.previousClose != null ? liveQuote.previousClose : null,
       high52: liveQuote.high52 != null ? liveQuote.high52 : demoBase.high52,
       low52: liveQuote.low52 != null ? liveQuote.low52 : demoBase.low52,
       _live: true

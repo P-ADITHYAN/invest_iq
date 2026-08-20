@@ -36,12 +36,15 @@
     const portfolioValue = currentHoldingsValue + portfolio.cash;
     const totalReturnPct = ((portfolioValue - CONFIG.DEFAULT_VIRTUAL_CASH) / CONFIG.DEFAULT_VIRTUAL_CASH) * 100;
 
-    // Today's P&L approximated from each holding's simulated day change,
-    // applied to its current value (demo mode has no live tick feed).
-    const todaysPnl = holdings.reduce(function (sum, h) {
-      const chgPct = UI.deterministicPseudo(h.symbol + new Date().toDateString(), -3, 3) / 100;
-      return sum + h.currentValue * chgPct;
-    }, 0);
+    // Today's P&L = Σ (currentPrice - previousClose) × quantity, using
+    // Yahoo's real previous-close for each holding (see api.js/getPortfolio
+    // and api/yahoo.js). Holdings priced from demo/offline data carry
+    // previousClose = null (there's no real "yesterday" for a demo price),
+    // so they're excluded rather than faked — todaysPnlPartial flags that
+    // at least one holding's contribution is missing.
+    const holdingsWithDayChange = holdings.filter(function (h) { return h.dayChange != null; });
+    const todaysPnl = holdingsWithDayChange.reduce(function (sum, h) { return sum + h.dayChange; }, 0);
+    const todaysPnlPartial = holdings.length > 0 && holdingsWithDayChange.length < holdings.length;
 
     if (!holdings.length && !portfolio.confirmed) {
       root.innerHTML =
@@ -62,7 +65,9 @@
     root.innerHTML =
       '<div class="stat-grid stagger" style="margin-bottom:var(--space-5)">' +
       statCard("Portfolio Value", UI.formatINR(portfolioValue, { decimals: 0 }), "", true) +
-      statCard("Today's P&L", (todaysPnl >= 0 ? "+" : "") + UI.formatINR(todaysPnl, { decimals: 0 }), todaysPnl >= 0 ? "text-success" : "text-danger") +
+      statCard("Today's P&L" + (holdingsWithDayChange.length === 0 && holdings.length ? " (n/a)" : todaysPnlPartial ? "*" : ""),
+        holdingsWithDayChange.length === 0 && holdings.length ? "—" : (todaysPnl >= 0 ? "+" : "") + UI.formatINR(todaysPnl, { decimals: 0 }),
+        holdingsWithDayChange.length === 0 && holdings.length ? "text-muted" : (todaysPnl >= 0 ? "text-success" : "text-danger")) +
       statCard("Total Return", UI.formatPercent(totalReturnPct), totalReturnPct >= 0 ? "text-success" : "text-danger") +
       statCard("Available Cash", UI.formatINR(portfolio.cash, { decimals: 0 })) +
       "</div>" +

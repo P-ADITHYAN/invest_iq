@@ -295,6 +295,11 @@
         const h = account.holdings[symbol];
         const stock = priceMap[symbol] || {};
         const currentPrice = stock.price || h.avgPrice;
+        // previousClose comes from Yahoo's real chart metadata (see
+        // api/yahoo.js). Null whenever we're on demo/offline data, which
+        // has no real "yesterday" — callers must treat that as "no real
+        // day-change available" rather than guessing a fallback here.
+        const previousClose = stock.previousClose != null ? stock.previousClose : null;
         const investedValue = h.avgPrice * h.quantity;
         const currentValue = currentPrice * h.quantity;
         return {
@@ -304,6 +309,8 @@
           quantity: h.quantity,
           avgPrice: h.avgPrice,
           currentPrice: currentPrice,
+          previousClose: previousClose,
+          dayChange: previousClose != null ? (currentPrice - previousClose) * h.quantity : null,
           investedValue: investedValue,
           currentValue: currentValue,
           pnl: currentValue - investedValue,

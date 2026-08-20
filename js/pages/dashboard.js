@@ -50,7 +50,8 @@
       root.innerHTML =
         '<div class="stat-grid" style="margin-bottom:var(--space-5)">' +
         statCard("Portfolio Value", UI.formatINR(portfolioValue, { decimals: 0 })) +
-        statCard("Today's P&L", UI.formatINR(0), "text-muted") +
+        statCard("Amount Invested", UI.formatINR(0)) +
+        statCard("Today's Change", UI.formatINR(0), "text-muted") +
         statCard("Total Return", UI.formatPercent(0)) +
         statCard("Available Cash", UI.formatINR(portfolio.cash, { decimals: 0 })) +
         "</div>" +
@@ -65,7 +66,12 @@
     root.innerHTML =
       '<div class="stat-grid stagger" style="margin-bottom:var(--space-5)">' +
       statCard("Portfolio Value", UI.formatINR(portfolioValue, { decimals: 0 }), "", true) +
-      statCard("Today's P&L" + (holdingsWithDayChange.length === 0 && holdings.length ? " (n/a)" : todaysPnlPartial ? "*" : ""),
+      statCard("Amount Invested", UI.formatINR(investedTotal, { decimals: 0 })) +
+      // Renamed from "Today's P&L" — that name reads as your overall gain/loss,
+      // but this is only the price move since yesterday's close (see the
+      // dayChange comment above). "Today's Change" makes the "since when"
+      // explicit so it isn't mistaken for total return on your holdings.
+      statCard("Today's Change" + (holdingsWithDayChange.length === 0 && holdings.length ? " (n/a)" : todaysPnlPartial ? "*" : ""),
         holdingsWithDayChange.length === 0 && holdings.length ? "—" : (todaysPnl >= 0 ? "+" : "") + UI.formatINR(todaysPnl, { decimals: 0 }),
         holdingsWithDayChange.length === 0 && holdings.length ? "text-muted" : (todaysPnl >= 0 ? "text-success" : "text-danger")) +
       statCard("Total Return", UI.formatPercent(totalReturnPct), totalReturnPct >= 0 ? "text-success" : "text-danger") +

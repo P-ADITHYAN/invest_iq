@@ -152,7 +152,7 @@
 .card-title { font-size: var(--font-size-sm); color: var(--color-text-muted); margin-bottom: var(--space-1); font-weight: var(--font-weight-medium); }
 .card-value { font-size: var(--font-size-2xl); font-weight: var(--font-weight-extrabold); letter-spacing: var(--tracking-tight); }
 
-.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-4); }
 @media (max-width: 900px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* ============ Buttons ============ */

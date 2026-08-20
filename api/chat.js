@@ -1,7 +1,7 @@
 /**
  * api/chat.js — Vercel serverless proxy for the "Ask InvestIQ" chat
  * assistant, backed by NVIDIA NIM's OpenAI-compatible chat completions
- * API (https://build.nvidia.com), using Llama 3.3 70B Instruct.
+ * API (https://build.nvidia.com), using Llama 3.1 8B Instruct.
  *
  * Previously backed by Google's Gemini API. Switched away because
  * Gemini's free tier kept hitting daily quota limits under normal
@@ -43,7 +43,13 @@
 
 export const config = { maxDuration: 15 };
 
-const NIM_MODEL = "meta/llama-3.3-70b-instruct";
+// A smaller/faster model than the 70B one on purpose: NIM returns the
+// whole completion in one shot (no streaming here), so the entire
+// generation has to finish inside Vercel Hobby's hard 10s function
+// limit. The 70B model routinely blew past that for a ~700-token reply
+// and timed out every time; the 8B model is quick enough to fit
+// comfortably while still being solid for plain-language explanations.
+const NIM_MODEL = "meta/llama-3.1-8b-instruct";
 const NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 
 const SYSTEM_INSTRUCTION = [

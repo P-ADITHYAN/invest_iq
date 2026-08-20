@@ -34,7 +34,7 @@ The product name "InvestIQ" is a single configurable constant (`CONFIG.APP_NAME`
 - Documented (stub) interfaces for What-If simulation and backtesting — intentionally left unimplemented per the phased build plan
 - **Live prices from Yahoo Finance** (price, day/52-week range, historical charts) via a small serverless proxy, with automatic fallback to demo data if the proxy or Yahoo is unreachable — see §8
 - **Live fundamentals from a RapidAPI Yahoo Finance subscription** (P/E, P/B, EPS, beta, market cap, dividend yield, plus real-derived ROE / revenue growth / profit growth / debt-to-equity) for a 10-stock universe, with per-field `null` shown honestly as "N/A" rather than fabricated when a provider response is incomplete for a given stock — see §8
-- **"Ask InvestIQ" floating chat assistant** (NVIDIA NIM-backed, Llama 3.3 70B Instruct) that explains the user's real portfolio/risk-profile data and general investing concepts in plain language — grounded only in real, already-computed app data, and explicitly instructed to never issue buy/sell trading signals — see §8c
+- **"Ask InvestIQ" floating chat assistant** (NVIDIA NIM-backed, Llama 3.1 8B Instruct) that explains the user's real portfolio/risk-profile data and general investing concepts in plain language — grounded only in real, already-computed app data, and explicitly instructed to never issue buy/sell trading signals — see §8c
 
 ## 3. Architecture
 
@@ -179,7 +179,7 @@ GET /api/fundamentals?symbols=RELIANCE.NS,TCS.NS,...  (max 10, matching the free
 
 ### 8c. "Ask InvestIQ" chat assistant — `api/chat.js` (needs your own NVIDIA NIM key)
 
-A floating chat widget (`js/chatWidget.js`, mounted on every authenticated page) lets the user ask about their own portfolio, risk profile, or general investing concepts in plain language, backed by NVIDIA NIM's OpenAI-compatible API (Llama 3.3 70B Instruct). Originally backed by Google's Gemini API; switched to NVIDIA NIM because Gemini's free tier kept hitting its daily quota under normal use — NVIDIA's free developer key has much more generous per-model rate limits for this workload.
+A floating chat widget (`js/chatWidget.js`, mounted on every authenticated page) lets the user ask about their own portfolio, risk profile, or general investing concepts in plain language, backed by NVIDIA NIM's OpenAI-compatible API (Llama 3.1 8B Instruct — a smaller/faster model chosen deliberately, since NIM's response has to complete inside Vercel Hobby's 10s function limit). Originally backed by Google's Gemini API; switched to NVIDIA NIM because Gemini's free tier kept hitting its daily quota under normal use — NVIDIA's free developer key has much more generous per-model rate limits for this workload.
 
 **What it's grounded in:** the widget gathers the user's *real* data client-side — risk profile, holdings, recent transactions, and portfolio health where that page has `PortfolioAnalytics` loaded — and sends it as structured JSON to `api/chat.js` on every message. The server-side system instruction (see that file) restricts the model to referencing only that data, and explicitly forbids issuing buy/sell trading signals or price predictions — it explains what the app's own deterministic engines already computed, the same "explain, don't just tell them what to buy" principle as `js/recommendationEngine.js` and `js/ai.js`. Missing context (e.g. no portfolio yet, or a page that doesn't load `PortfolioAnalytics`) is simply omitted, never fabricated.
 
